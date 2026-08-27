@@ -508,3 +508,17 @@
     font-size: 15px;
   }
 }
+
+@media (max-width: 768px) {
+  .nav-toggle,
+  .search-toggle {
+    transition: opacity 0.5s ease, transform 0.5s ease;
+  }
+
+  body.ui-hidden .nav-toggle,
+  body.ui-hidden .search-toggle {
+    opacity: 0;
+    transform: scale(0.8);
+    pointer-events: none;
+  }
+}
