@@ -3,6 +3,8 @@ export class AudioEngine {
     this.queue = []
     this.history = []
     this.currentTrack = -1
+    this.blockedTracks = new Set()
+    this._skipTimer = null
     this.volume = 0.7
     this.isPlaying = false
     this.onTrackEnd = null
@@ -119,8 +121,11 @@ export class AudioEngine {
           this.updatePlayerUI()
           const code = e.data
           if (code === 100 || code === 101 || code === 105 || code === 150) {
+            const track = this.queue[this.currentTrack]
+            if (track && track.videoId) this.blockedTracks.add(track.videoId)
             console.warn('[Nebula] Vídeo indisponível/sem embed, pulando para o próximo')
-            setTimeout(() => this.next(), 800)
+            this.cancelAutoSkip()
+            this._skipTimer = setTimeout(() => this.next(), 800)
           }
         }
       }
@@ -137,6 +142,7 @@ export class AudioEngine {
 
   playTrack(track, queue = null) {
     console.log('[Nebula] playTrack:', track.title, 'videoId:', track.videoId)
+    this.cancelAutoSkip()
     if (queue) {
       this.queue = queue
       this.history.length = 0
@@ -242,29 +248,53 @@ export class AudioEngine {
     this.updatePlayerUI()
   }
 
+  cancelAutoSkip() {
+    if (this._skipTimer) {
+      clearTimeout(this._skipTimer)
+      this._skipTimer = null
+    }
+  }
+
+  findPlayableIndex(fromIdx, step) {
+    const len = this.queue.length
+    if (len === 0) return fromIdx
+    let idx = fromIdx
+    for (let guard = 0; guard < len; guard++) {
+      const t = this.queue[idx]
+      if (!t || !this.blockedTracks.has(t.videoId)) return idx
+      idx = (idx + step + len) % len
+    }
+    return fromIdx
+  }
+
   next() {
     if (this.queue.length === 0) return
+    this.cancelAutoSkip()
     if (this.history[this.history.length - 1] !== this.currentTrack) {
       this.history.push(this.currentTrack)
     }
-    this.currentTrack = (this.currentTrack + 1) % this.queue.length
+    this.currentTrack = this.findPlayableIndex((this.currentTrack + 1) % this.queue.length, 1)
     this.playTrack(this.queue[this.currentTrack])
   }
 
   prev() {
     if (this.queue.length === 0) return
+    this.cancelAutoSkip()
 
     while (this.history.length > 0) {
       const last = this.history[this.history.length - 1]
       this.history.pop()
       if (last >= 0 && last < this.queue.length && last !== this.currentTrack) {
-        this.currentTrack = last
-        this.playTrack(this.queue[this.currentTrack])
-        return
+        const t = this.queue[last]
+        if (!t || !this.blockedTracks.has(t.videoId)) {
+          this.currentTrack = last
+          this.playTrack(this.queue[this.currentTrack])
+          return
+        }
       }
     }
 
-    this.currentTrack = (this.currentTrack - 1 + this.queue.length) % this.queue.length
+    this.currentTrack = this.findPlayableIndex((this.currentTrack - 1 + this.queue.length) % this.queue.length, -1)
     this.playTrack(this.queue[this.currentTrack])
   }
 
