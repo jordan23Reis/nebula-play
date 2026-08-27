@@ -115,7 +115,8 @@ function animate() {
   )
 
   if (screenOff) {
-    if (!audioEngine.isPlaying) exitScreenOff()
+    if (!audioEngine.isPlaying && !screenOffUnlocking) exitScreenOff()
+    drawScreenOff(delta)
   } else {
     perfMonitor.tick(delta)
     lights.update(audioData)
@@ -322,70 +323,171 @@ searchToggle.addEventListener('click', () => {
 // Screen-off simulation
 const screenOffOverlay = document.getElementById('screen-off')
 const screenOffHandle = document.getElementById('screen-off-handle')
-const screenOffLane = document.getElementById('screen-off-lane')
+const screenOffCanvas = document.getElementById('screen-off-canvas')
+const screenOffTargetEl = document.querySelector('.screen-off-target')
 const screenOffToggle = document.getElementById('screen-off-toggle')
+const sctx = screenOffCanvas.getContext('2d')
 
-const sparkDefs = []
-;(function buildSparks() {
-  const count = 14
-  for (let i = 0; i < count; i++) {
-    const f = (i + 0.5) / count
-    const cell = document.createElement('div')
-    cell.className = 'spark-cell'
-    const bolt = Math.random() > 0.4
-    const size = 7 + Math.random() * 8
-    cell.style.top = (f * 100) + '%'
-    cell.style.marginLeft = (-size / 2) + 'px'
-    cell.innerHTML = bolt
-      ? '<svg class="spark" width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z"/></svg>'
-      : '<svg class="spark spark-star" width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0l2.4 9.6L24 12l-9.6 2.4L12 24l-2.4-9.6L0 12l9.6-2.4z"/></svg>'
-    const inner = cell.firstElementChild
-    inner.style.animationDelay = (Math.random() * -2).toFixed(2) + 's'
-    inner.style.animationDuration = (1.2 + Math.random() * 1.4).toFixed(2) + 's'
-    inner.style.setProperty('--rot', (Math.random() * 360 - 180).toFixed(0) + 'deg')
-    screenOffLane.appendChild(cell)
-    sparkDefs.push({ cell, f })
-  }
-})()
-
+let sparks = []
+let rings = []
 let screenOffDragging = false
 let screenOffStartY = 0
 let screenOffTravel = 0
 let screenOffProgress = 0
+let screenOffUnlocking = false
+
+function screenOffResize() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 1.75)
+  screenOffCanvas.width = Math.floor(window.innerWidth * dpr)
+  screenOffCanvas.height = Math.floor(window.innerHeight * dpr)
+  sctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+}
+window.addEventListener('resize', screenOffResize)
+screenOffResize()
+
+function getScreenOffTarget() {
+  const r = screenOffTargetEl.getBoundingClientRect()
+  return { x: r.left + r.width / 2, y: r.top + r.height / 2 }
+}
+
+function spawnSpark(x, y, vx, vy, g, max, size) {
+  if (sparks.length > 220) return
+  const cols = ['255,214,102', '255,178,74', '255,240,190', '255,150,50']
+  sparks.push({
+    x, y, vx, vy, g, life: 0, max,
+    size, seed: Math.random() * 100,
+    color: cols[(Math.random() * cols.length) | 0]
+  })
+}
+
+function spawnAmbientSparks() {
+  const w = window.innerWidth
+  const h = window.innerHeight
+  const x = w / 2 + (Math.random() - 0.5) * w * 0.34
+  const y = h * 0.94 - Math.random() * 30
+  spawnSpark(x, y, (Math.random() - 0.5) * 26, -(70 + Math.random() * 120), 24, 1 + Math.random() * 1.2, 1 + Math.random() * 1.2)
+}
+
+function spawnDragSparks() {
+  const r = screenOffHandle.getBoundingClientRect()
+  const hx = r.left + r.width / 2
+  const hy = r.top + r.height / 2
+  for (let i = 0; i < 3; i++) {
+    spawnSpark(
+      hx + (Math.random() - 0.5) * 34,
+      hy + (Math.random() - 0.5) * 22,
+      (Math.random() - 0.5) * 100,
+      -(70 + Math.random() * 230),
+      46,
+      0.45 + Math.random() * 0.7,
+      1.4 + Math.random() * 1.6
+    )
+  }
+}
+
+function spawnBurst(x, y) {
+  for (let i = 0; i < 90; i++) {
+    const ang = Math.random() * Math.PI * 2
+    const sp = 70 + Math.random() * 300
+    spawnSpark(x, y, Math.cos(ang) * sp, Math.sin(ang) * sp, 280, 0.6 + Math.random() * 0.9, 1.2 + Math.random() * 1.8)
+  }
+  rings.push({ x, y, r0: 12, maxR: Math.min(window.innerWidth, window.innerHeight) * 0.55, life: 0, max: 0.6 })
+}
+
+function drawScreenOff(delta) {
+  if (!screenOffUnlocking) {
+    if (sparks.length < 60 && Math.random() < 0.5) spawnAmbientSparks()
+    if (screenOffDragging) spawnDragSparks()
+  }
+
+  const w = window.innerWidth
+  const h = window.innerHeight
+  sctx.clearRect(0, 0, w, h)
+  sctx.globalCompositeOperation = 'lighter'
+  sctx.lineCap = 'round'
+
+  for (let i = sparks.length - 1; i >= 0; i--) {
+    const s = sparks[i]
+    s.life += delta
+    if (s.life >= s.max) { sparks.splice(i, 1); continue }
+    s.x += s.vx * delta
+    s.y += s.vy * delta
+    s.vy += s.g * delta
+    const fade = 1 - s.life / s.max
+    const flick = 0.55 + 0.45 * Math.sin(s.life * 46 + s.seed)
+    const a = fade * flick
+    if (a <= 0.02) { sparks.splice(i, 1); continue }
+    const sx = s.x - s.vx * 0.03
+    const sy = s.y - s.vy * 0.03
+    sctx.strokeStyle = 'rgba(' + s.color + ',' + (a * 0.55).toFixed(3) + ')'
+    sctx.lineWidth = s.size * 2.4
+    sctx.beginPath(); sctx.moveTo(sx, sy); sctx.lineTo(s.x, s.y); sctx.stroke()
+    sctx.strokeStyle = 'rgba(255,250,235,' + a.toFixed(3) + ')'
+    sctx.lineWidth = s.size
+    sctx.beginPath(); sctx.moveTo(sx, sy); sctx.lineTo(s.x, s.y); sctx.stroke()
+  }
+
+  for (let i = rings.length - 1; i >= 0; i--) {
+    const r = rings[i]
+    r.life += delta
+    if (r.life >= r.max) { rings.splice(i, 1); continue }
+    const p = r.life / r.max
+    const rad = r.r0 + p * p * r.maxR
+    const a = (1 - p) * 0.85
+    sctx.strokeStyle = 'rgba(255,214,102,' + a.toFixed(3) + ')'
+    sctx.lineWidth = 2.5 * (1 - p) + 0.5
+    sctx.beginPath(); sctx.arc(r.x, r.y, rad, 0, Math.PI * 2); sctx.stroke()
+  }
+
+  sctx.globalCompositeOperation = 'source-over'
+}
 
 function setScreenOffProgress(progress) {
   screenOffProgress = Math.max(0, Math.min(1, progress))
   screenOffHandle.style.transform = 'translateY(' + (-(screenOffProgress * screenOffTravel)).toFixed(1) + 'px)'
-  screenOffHandle.style.filter = 'brightness(' + (1 + screenOffProgress * 1.3).toFixed(2) + ') drop-shadow(0 0 ' + (26 + screenOffProgress * 30).toFixed(0) + 'px rgba(255,210,74,0.4))'
-  sparkDefs.forEach(s => {
-    s.cell.classList.toggle('dead', s.f + screenOffProgress > 1)
-  })
-}
-
-function resetScreenOffProgress() {
-  setScreenOffProgress(0)
+  screenOffHandle.style.filter = 'brightness(' + (1 + screenOffProgress * 1.25).toFixed(2) + ')'
 }
 
 function exitScreenOff() {
-  if (!screenOff) return
-  screenOff = false
+  if (!screenOff || screenOffUnlocking) return
+  screenOffUnlocking = true
+  screenOffDragging = false
   screenOffOverlay.classList.add('unlocking')
-  screenOffOverlay.classList.remove('open')
-  screenOffHandle.style.transition = 'transform 0.45s cubic-bezier(0.4, 0, 0.2, 1), filter 0.45s ease'
-  resetScreenOffProgress()
+  screenOffHandle.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.15), filter 0.3s ease'
+  setScreenOffProgress(1)
+  const t = getScreenOffTarget()
+  spawnBurst(t.x, t.y)
   setTimeout(() => {
+    screenOff = false
+    screenOffOverlay.classList.remove('open')
+  }, 380)
+  setTimeout(() => {
+    screenOffUnlocking = false
     screenOffOverlay.classList.remove('unlocking')
     screenOffHandle.style.transition = ''
     screenOffHandle.style.filter = ''
-    sparkDefs.forEach(s => s.cell.classList.remove('dead'))
-  }, 550)
+    setScreenOffProgress(0)
+    sparks = []
+    rings = []
+  }, 800)
+}
+
+function resetScreenOffPosition() {
+  screenOffHandle.style.transition = 'transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), filter 0.35s ease'
+  setScreenOffProgress(0)
+  setTimeout(() => {
+    screenOffHandle.style.transition = ''
+  }, 400)
 }
 
 screenOffToggle.addEventListener('click', () => {
+  sparks = []
+  rings = []
   screenOff = true
+  screenOffUnlocking = false
   screenOffHandle.style.transition = 'none'
   screenOffHandle.style.filter = ''
-  sparkDefs.forEach(s => s.cell.classList.remove('dead'))
+  setScreenOffProgress(0)
   screenOffOverlay.classList.remove('unlocking')
   screenOffOverlay.classList.add('open')
 })
@@ -396,13 +498,11 @@ screenOffHandle.addEventListener('pointerdown', (e) => {
   screenOffDragging = true
   screenOffStartY = e.clientY
   const handleRect = screenOffHandle.getBoundingClientRect()
-  const targetRect = screenOffToggle.getBoundingClientRect()
+  const targetRect = screenOffTargetEl.getBoundingClientRect()
   const handleCenter = handleRect.top + handleRect.height / 2
   const targetCenter = targetRect.top + targetRect.height / 2
   screenOffTravel = Math.max(50, handleCenter - targetCenter)
   screenOffHandle.style.transition = 'none'
-  screenOffHandle.style.filter = ''
-  setScreenOffProgress(screenOffProgress)
 })
 
 window.addEventListener('pointermove', (e) => {
@@ -417,22 +517,14 @@ window.addEventListener('pointerup', () => {
   if (screenOffProgress >= 0.9) {
     exitScreenOff()
   } else {
-    screenOffHandle.style.transition = 'transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), filter 0.35s ease'
-    resetScreenOffProgress()
-    setTimeout(() => {
-      screenOffHandle.style.transition = ''
-    }, 400)
+    resetScreenOffPosition()
   }
 })
 
 window.addEventListener('pointercancel', () => {
   if (!screenOffDragging) return
   screenOffDragging = false
-  screenOffHandle.style.transition = 'transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), filter 0.35s ease'
-  resetScreenOffProgress()
-  setTimeout(() => {
-    screenOffHandle.style.transition = ''
-  }, 400)
+  resetScreenOffPosition()
 })
 
 searchInput.addEventListener('input', () => {
