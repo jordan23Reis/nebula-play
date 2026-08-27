@@ -47,20 +47,16 @@ const timeTotal = document.getElementById('time-total')
 
 let seeking = false
 
-// Ambient UI auto-hide (mobile): after idle, fade player + toggles, leaving the 3D scene alone
+// Ambient UI auto-hide (mobile): after idle, fade every visible interface element, leaving the 3D scene alone
 let uiHidden = false
 let uiHideTimer = null
 const uiAutoHideMedia = window.matchMedia('(max-width: 768px)')
 
-function uiCanHide() {
-  return !queueOpen && !navOverlay.classList.contains('open')
-}
-
 function uiScheduleHide() {
   clearTimeout(uiHideTimer)
-  if (uiHidden || !uiAutoHideMedia.matches || !uiCanHide()) return
+  if (uiHidden || !uiAutoHideMedia.matches) return
   uiHideTimer = setTimeout(() => {
-    if (uiAutoHideMedia.matches && uiCanHide() && audioEngine.isPlaying) {
+    if (uiAutoHideMedia.matches) {
       uiHidden = true
       document.body.classList.add('ui-hidden')
     }
@@ -97,8 +93,6 @@ function animate() {
 
   if (audioEngine.isPlaying) {
     audioData = audioEngine.getAnalysis()
-  } else if (uiHidden) {
-    uiShow()
   }
 
   const targetSpeed = audioEngine.isPlaying ? 5.0 + audioData.bass * 3 : 0.75
