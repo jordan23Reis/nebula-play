@@ -455,7 +455,12 @@
 
   .progress-bar {
     height: 5px;
+    padding: 14px 0;
+    margin: -14px 0;
+    background-clip: content-box;
     border-radius: 3px;
+    touch-action: none;
+    -webkit-tap-highlight-color: transparent;
   }
 
   .progress-fill {
