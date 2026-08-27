@@ -140,15 +140,24 @@
 
 .progress-bar {
   flex: 1;
+  height: 5px;
+  cursor: pointer;
+  position: relative;
+}
+
+.progress-track {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  transform: translateY(-50%);
   height: 3px;
   background: rgba(255, 255, 255, 0.08);
   border-radius: 2px;
-  cursor: pointer;
-  position: relative;
   transition: height 0.15s;
 }
 
-.progress-bar:hover {
+.progress-bar:hover .progress-track {
   height: 5px;
 }
 
@@ -454,13 +463,21 @@
   }
 
   .progress-bar {
-    height: 5px;
-    padding: 14px 0;
-    margin: -14px 0;
-    background-clip: content-box;
-    border-radius: 3px;
+    height: 28px;
+    display: block;
+    padding: 0;
+    margin: 0;
+    border-radius: 0;
+    background: none;
     touch-action: none;
     -webkit-tap-highlight-color: transparent;
+  }
+
+  .progress-track {
+    left: 0;
+    right: 0;
+    height: 5px;
+    border-radius: 3px;
   }
 
   .progress-fill {

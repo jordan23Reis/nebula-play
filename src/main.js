@@ -44,6 +44,8 @@ const progressFill = document.getElementById('progress-fill')
 const timeCurrent = document.getElementById('time-current')
 const timeTotal = document.getElementById('time-total')
 
+let seeking = false
+
 function formatTime(sec) {
   const m = Math.floor(sec / 60)
   const s = Math.floor(sec % 60)
@@ -88,7 +90,7 @@ function animate() {
   starfield.update(delta)
   particles.update(delta, elapsed, audioData)
 
-  if (audioEngine.isPlaying) {
+  if (audioEngine.isPlaying && !seeking) {
     const current = audioEngine.getCurrentTime()
     const duration = audioEngine.getDuration()
     if (duration > 0) {
@@ -115,17 +117,25 @@ function updateSeek(e) {
   const rect = progressBar.getBoundingClientRect()
   const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width))
   const fraction = x / rect.width
+  progressFill.style.transition = 'none'
   audioEngine.seek(fraction)
   progressFill.style.width = (fraction * 100) + '%'
 }
 
+function endSeek() {
+  seeking = false
+  progressFill.style.transition = ''
+}
+
 progressBar.addEventListener('mousedown', (e) => {
   e.preventDefault()
+  seeking = true
   updateSeek(e)
   const onMove = (e) => { e.preventDefault(); updateSeek(e) }
   const onUp = () => {
     document.removeEventListener('mousemove', onMove)
     document.removeEventListener('mouseup', onUp)
+    endSeek()
   }
   document.addEventListener('mousemove', onMove)
   document.addEventListener('mouseup', onUp)
@@ -133,12 +143,14 @@ progressBar.addEventListener('mousedown', (e) => {
 
 progressBar.addEventListener('touchstart', (e) => {
   e.preventDefault()
+  seeking = true
   updateSeek(e.touches[0])
   const onMove = (e) => { e.preventDefault(); updateSeek(e.touches[0]) }
   const onEnd = () => {
     document.removeEventListener('touchmove', onMove)
     document.removeEventListener('touchend', onEnd)
     document.removeEventListener('touchcancel', onEnd)
+    endSeek()
   }
   document.addEventListener('touchmove', onMove, { passive: false })
   document.addEventListener('touchend', onEnd)
