@@ -3,10 +3,10 @@ export const TIERS = { HIGH: 0, MEDIUM: 1, LOW: 2, ULTRA: 3 }
 export const TIER_NAMES = ['HIGH', 'MEDIUM', 'LOW', 'ULTRA']
 
 export const QUALITY = {
-  [TIERS.HIGH]: { pixelRatio: 2, stars: 1500, particles: 2000, frames: 50, shapes: 40, postFX: true },
-  [TIERS.MEDIUM]: { pixelRatio: 1.25, stars: 800, particles: 1000, frames: 36, shapes: 30, postFX: true },
-  [TIERS.LOW]: { pixelRatio: 0.75, stars: 400, particles: 400, frames: 26, shapes: 22, postFX: false },
-  [TIERS.ULTRA]: { pixelRatio: 0.5, stars: 150, particles: 150, frames: 18, shapes: 14, postFX: false }
+  [TIERS.HIGH]: { pixelRatio: 2, stars: 1500, particles: 2000, frames: 50, shapes: 40, postFX: true, bloom: 1 },
+  [TIERS.MEDIUM]: { pixelRatio: 1.25, stars: 800, particles: 1000, frames: 36, shapes: 30, postFX: true, bloom: 0.5 },
+  [TIERS.LOW]: { pixelRatio: 0.75, stars: 400, particles: 400, frames: 26, shapes: 22, postFX: false, bloom: 0 },
+  [TIERS.ULTRA]: { pixelRatio: 0.5, stars: 150, particles: 150, frames: 18, shapes: 14, postFX: false, bloom: 0 }
 }
 
 export class PerfMonitor {

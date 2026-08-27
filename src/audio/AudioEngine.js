@@ -339,22 +339,32 @@ export class AudioEngine {
     if (this.mode === 'youtube' && this.isPlaying) {
       const t = performance.now() * 0.001
       const vol = this.volume
+      const waveform = this._waveform || (this._waveform = new Uint8Array(128))
+      const frequency = this._frequency || (this._frequency = new Uint8Array(128))
+      for (let i = 0; i < 128; i++) {
+        waveform[i] = 128 + Math.sin(t * 5 + i * 0.3) * 40 * vol
+        frequency[i] = Math.max(0, Math.min(255, (0.5 + 0.5 * Math.sin(t * 3 + i * 0.2)) * 200 * vol * (1 - i / 128)))
+      }
       return {
         bass: (0.3 + 0.3 * Math.sin(t * 2.1) + 0.2 * Math.sin(t * 3.7)) * vol,
         mid: (0.25 + 0.25 * Math.sin(t * 4.3) + 0.15 * Math.sin(t * 5.1)) * vol,
         treble: (0.2 + 0.2 * Math.sin(t * 6.7) + 0.1 * Math.sin(t * 8.3)) * vol,
-        waveform: new Uint8Array(128).map((_, i) => 128 + Math.sin(t * 5 + i * 0.3) * 40 * vol),
-        frequency: new Uint8Array(128).map((_, i) => Math.max(0, Math.min(255, (0.5 + 0.5 * Math.sin(t * 3 + i * 0.2)) * 200 * vol * (1 - i / 128))))
+        waveform,
+        frequency
       }
     }
 
-    if (this.mode === 'deezer' && this.analyser && this.isPlaying) {
-      const frequency = new Uint8Array(this.analyser.frequencyBinCount)
-      const waveform = new Uint8Array(this.analyser.frequencyBinCount)
+if (this.mode === 'deezer' && this.analyser && this.isPlaying) {
+      const binCount = this.analyser.frequencyBinCount
+      if (!this._freqBuf || this._freqBuf.length !== binCount) {
+        this._freqBuf = new Uint8Array(binCount)
+        this._waveBuf = new Uint8Array(binCount)
+      }
+      const frequency = this._freqBuf
+      const waveform = this._waveBuf
       this.analyser.getByteFrequencyData(frequency)
       this.analyser.getByteTimeDomainData(waveform)
 
-      const binCount = frequency.length
       const bassEnd = Math.floor(binCount * 0.15)
       const midEnd = Math.floor(binCount * 0.5)
 
@@ -372,6 +382,10 @@ export class AudioEngine {
       }
     }
 
-    return { bass: 0, mid: 0, treble: 0, waveform: new Uint8Array(128), frequency: new Uint8Array(128) }
+    return {
+      bass: 0, mid: 0, treble: 0,
+      waveform: this._waveform || (this._waveform = new Uint8Array(128)),
+      frequency: this._frequency || (this._frequency = new Uint8Array(128))
+    }
   }
 }

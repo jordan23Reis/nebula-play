@@ -80,6 +80,10 @@ export class Particles {
     this.build()
   }
 
+  setPixelRatio(ratio) {
+    this.mesh.material.uniforms.uPixelRatio.value = ratio
+  }
+
   update(delta, elapsed, audioData) {
     this.mesh.material.uniforms.uTime.value = elapsed
     this.mesh.material.uniforms.uBass.value = audioData.bass

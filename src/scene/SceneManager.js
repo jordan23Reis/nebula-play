@@ -108,6 +108,7 @@ export class SceneManager {
 
     this.useComposer = true
     this.pixelRatio = Math.min(window.devicePixelRatio, 2)
+    this.bloomScale = QUALITY[TIERS.HIGH].bloom
 
     this.time = 0
     this.setupResize()
@@ -115,6 +116,7 @@ export class SceneManager {
 
   setQuality(tier) {
     this.useComposer = !!QUALITY[tier].postFX
+    this.bloomScale = QUALITY[tier].bloom
     this.pixelRatio = QUALITY[tier].pixelRatio
     if (tier === TIERS.HIGH || tier === TIERS.MEDIUM) {
       this.pixelRatio = Math.min(window.devicePixelRatio || 1, this.pixelRatio)
@@ -143,7 +145,7 @@ export class SceneManager {
     this.chromaPass.uniforms.uTime.value = this.time
     this.chromaPass.uniforms.uOffset.value = 0.001 + audioData.bass * 0.002
     this.grainPass.uniforms.uTime.value = this.time * 50
-    this.bloomPass.strength = 0.6 + audioData.bass * 0.6
+    this.bloomPass.strength = this.bloomScale * (0.6 + audioData.bass * 0.6)
   }
 
   render() {

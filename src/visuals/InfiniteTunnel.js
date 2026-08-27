@@ -34,6 +34,12 @@ export class InfiniteTunnel {
       bg: new THREE.Color(palettes[0].bg)
     }
 
+    this.paletteColors = palettes.map(p => ({
+      frames: new THREE.Color(p.frames),
+      shapes: new THREE.Color(p.shapes),
+      bg: new THREE.Color(p.bg)
+    }))
+
     this.buildFrames()
     this.buildShapes()
   }
@@ -170,24 +176,12 @@ export class InfiniteTunnel {
     const t = this.paletteProgress
     const ease = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2
 
-    const from = palettes[this.currentPalette]
-    const to = palettes[this.targetPalette]
+    const from = this.paletteColors[this.currentPalette]
+    const to = this.paletteColors[this.targetPalette]
 
-    this.currentColors.frames.lerpColors(
-      new THREE.Color(from.frames),
-      new THREE.Color(to.frames),
-      ease
-    )
-    this.currentColors.shapes.lerpColors(
-      new THREE.Color(from.shapes),
-      new THREE.Color(to.shapes),
-      ease
-    )
-    this.currentColors.bg.lerpColors(
-      new THREE.Color(from.bg),
-      new THREE.Color(to.bg),
-      ease
-    )
+    this.currentColors.frames.lerpColors(from.frames, to.frames, ease)
+    this.currentColors.shapes.lerpColors(from.shapes, to.shapes, ease)
+    this.currentColors.bg.lerpColors(from.bg, to.bg, ease)
 
     for (const frame of this.frames) {
       frame.children.forEach(child => {

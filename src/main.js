@@ -27,6 +27,7 @@ perfMonitor.onTierChange = (prev, tier) => {
   tunnel.setDensity(q.frames, q.shapes)
   starfield.setDensity(q.stars)
   particles.setDensity(q.particles)
+  particles.setPixelRatio(sceneManager.pixelRatio)
 }
 
 const clock = new THREE.Timer()
