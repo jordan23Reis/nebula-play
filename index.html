@@ -141,8 +141,22 @@
   </div>
 
   <div id="screen-off" class="screen-off">
-    <div class="screen-off-trail"></div>
+    <div class="screen-off-bg"></div>
+    <div class="screen-off-trail">
+      <div class="screen-off-trail-fill" id="screen-off-trail-fill"></div>
+    </div>
     <div class="screen-off-target"></div>
+    <button id="screen-off-copy" class="screen-off-toggle screen-off-copy" tabindex="-1" aria-hidden="true">
+      <svg class="icon-power" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2v10"/>
+        <path d="M18.36 6.64a9 9 0 1 1-12.73 0"/>
+      </svg>
+      <svg class="icon-light" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9 18h6"/>
+        <path d="M10 22h4"/>
+        <path d="M8.4 14.5a5.5 5.5 0 1 1 7.2 0c-1.5 1.3-1.6 1-1.6 2.5h-4c0-1.5-.1-1.2-1.6-2.5z"/>
+      </svg>
+    </button>
   </div>
 
   <script type="module" src="/src/main.js"></script>

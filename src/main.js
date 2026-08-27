@@ -330,9 +330,12 @@ searchToggle.addEventListener('click', () => {
 
 // Screen-off simulation
 const screenOffOverlay = document.getElementById('screen-off')
+const screenOffBg = document.getElementById('screen-off-bg')
 const screenOffToggle = document.getElementById('screen-off-toggle')
-const screenOffPowerIcon = screenOffToggle.querySelector('.icon-power')
-const screenOffLightIcon = screenOffToggle.querySelector('.icon-light')
+const screenOffButton = document.getElementById('screen-off-copy')
+const screenOffPowerIcon = screenOffButton.querySelector('.icon-power')
+const screenOffLightIcon = screenOffButton.querySelector('.icon-light')
+const screenOffTrailFill = document.getElementById('screen-off-trail-fill')
 
 let screenOffDragging = false
 let screenOffStartY = 0
@@ -341,38 +344,43 @@ let screenOffProgress = 1
 let screenOffUnlocking = false
 
 const SCREEN_OFF_TWEEN = 'transform 0.95s cubic-bezier(0.33, 1, 0.68, 1)'
-const SCREEN_OFF_OVERLAY_TWEEN = 'opacity 1.05s ease'
+const SCREEN_OFF_BG_TWEEN = 'opacity 1.05s ease'
 const SCREEN_OFF_ICON_TWEEN = 'opacity 0.9s ease'
 
 function setScreenOffTweens(on) {
-  screenOffToggle.style.transition = on ? SCREEN_OFF_TWEEN : 'none'
-  screenOffOverlay.style.transition = on ? SCREEN_OFF_OVERLAY_TWEEN : 'none'
+  screenOffButton.style.transition = on ? SCREEN_OFF_TWEEN : 'none'
+  screenOffBg.style.transition = on ? SCREEN_OFF_BG_TWEEN : 'none'
   screenOffPowerIcon.style.transition = on ? SCREEN_OFF_ICON_TWEEN : 'none'
   screenOffLightIcon.style.transition = on ? SCREEN_OFF_ICON_TWEEN : 'none'
 }
 
 function setScreenOffState(p) {
   screenOffProgress = Math.max(0, Math.min(1, p))
-  screenOffToggle.style.transform = 'translateY(' + (screenOffProgress * screenOffTravel).toFixed(1) + 'px)'
-  screenOffOverlay.style.opacity = screenOffProgress.toFixed(3)
+  screenOffButton.style.transform = 'translateY(' + (screenOffProgress * screenOffTravel).toFixed(1) + 'px)'
+  screenOffBg.style.opacity = screenOffProgress.toFixed(3)
   screenOffPowerIcon.style.opacity = (1 - screenOffProgress).toFixed(3)
   screenOffLightIcon.style.opacity = screenOffProgress.toFixed(3)
+  screenOffTrailFill.style.height = (screenOffProgress * 100).toFixed(1) + '%'
 }
 
 function computeScreenOffTravel() {
-  const r = screenOffToggle.getBoundingClientRect()
+  const r = screenOffButton.getBoundingClientRect()
   const topCenter = r.top + r.height / 2
   const bottomCenter = window.innerHeight * (1 - 0.14) - r.height
-  screenOffTravel = Math.max(40, topCenter - bottomCenter)
+  screenOffTravel = Math.max(40, bottomCenter - topCenter)
 }
 
 function startScreenOff() {
+  screenOffToggle.style.display = 'none'
+  screenOffButton.style.display = ''
+  uiShow()
   computeScreenOffTravel()
   screenOff = true
   screenOffUnlocking = false
   document.body.classList.add('screen-off')
   screenOffOverlay.classList.remove('unlocking')
   screenOffOverlay.classList.add('open')
+  screenOffButton.style.opacity = '1'
   setScreenOffState(0)
   setScreenOffTweens(true)
   void screenOffOverlay.offsetWidth
@@ -385,24 +393,31 @@ function finishScreenOff() {
   screenOffUnlocking = true
   uiShow()
   screenOffOverlay.classList.add('unlocking')
-  screenOffToggle.style.transition = 'transform 0.4s cubic-bezier(0.2, 0.9, 0.3, 1.12)'
-  screenOffOverlay.style.transition = 'opacity 0.4s ease'
+  screenOffButton.style.transition = 'transform 0.4s cubic-bezier(0.2, 0.9, 0.3, 1.12)'
+  screenOffBg.style.transition = 'opacity 0.4s ease'
   screenOffPowerIcon.style.transition = 'opacity 0.35s ease'
   screenOffLightIcon.style.transition = 'opacity 0.35s ease'
   setScreenOffState(0)
-  document.body.classList.remove('screen-off')
-  screenOffOverlay.classList.remove('open')
+  setTimeout(() => {
+    document.body.classList.remove('screen-off')
+    screenOffOverlay.classList.remove('open')
+    screenOffButton.style.display = 'none'
+    screenOffToggle.style.display = ''
+  }, 460)
   setTimeout(() => {
     screenOffUnlocking = false
     screenOffOverlay.classList.remove('unlocking')
     setScreenOffTweens(false)
-    screenOffOverlay.style.opacity = ''
-    screenOffOverlay.style.transition = ''
-    screenOffToggle.style.transform = ''
-    screenOffToggle.style.transition = ''
+    screenOffBg.style.opacity = ''
+    screenOffBg.style.transition = ''
+    screenOffButton.style.transform = ''
+    screenOffButton.style.opacity = ''
+    screenOffButton.style.transition = ''
     screenOffPowerIcon.style.transition = ''
     screenOffLightIcon.style.transition = ''
-  }, 650)
+    screenOffTrailFill.style.height = ''
+    screenOffProgress = 1
+  }, 700)
 }
 
 function springScreenOffBack() {
@@ -416,11 +431,12 @@ screenOffToggle.addEventListener('click', () => {
   startScreenOff()
 })
 
-screenOffToggle.addEventListener('pointerdown', (e) => {
+screenOffButton.addEventListener('pointerdown', (e) => {
   if (!screenOff || screenOffUnlocking) return
   e.preventDefault()
   screenOffDragging = true
   screenOffStartY = e.clientY
+  screenOffOverlay.classList.add('screen-off-dragging')
   setScreenOffTweens(false)
 })
 
@@ -430,10 +446,14 @@ window.addEventListener('pointermove', (e) => {
   setScreenOffState(Math.min(1, Math.max(0.04, p)))
 })
 
-window.addEventListener('pointerup', () => {
+window.addEventListener('pointerup', (e) => {
   if (!screenOffDragging) return
   screenOffDragging = false
-  if (screenOffProgress <= 0.15) {
+  screenOffOverlay.classList.remove('screen-off-dragging')
+  if (!screenOff) return
+  const moved = Math.abs((e.clientY || screenOffStartY) - screenOffStartY)
+  const tapUnlock = moved < 10
+  if (screenOffProgress <= 0.15 || tapUnlock) {
     finishScreenOff()
   } else {
     springScreenOffBack()
@@ -443,6 +463,7 @@ window.addEventListener('pointerup', () => {
 window.addEventListener('pointercancel', () => {
   if (!screenOffDragging) return
   screenOffDragging = false
+  screenOffOverlay.classList.remove('screen-off-dragging')
   springScreenOffBack()
 })
 
