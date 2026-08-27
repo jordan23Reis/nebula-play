@@ -139,9 +139,6 @@ export class AudioEngine {
     console.log('[Nebula] playTrack:', track.title, 'videoId:', track.videoId)
     if (queue) this.queue = queue
 
-    const prevIdx = this.currentTrack
-    if (prevIdx >= 0) this.history.push(prevIdx)
-
     this.currentTrack = this.queue.findIndex(t => t.id === track.id)
     if (this.currentTrack === -1) {
       this.queue.unshift(track)
@@ -251,12 +248,17 @@ export class AudioEngine {
 
   prev() {
     if (this.history.length > 0) {
-      this.currentTrack = this.history.pop()
-      this.playTrack(this.queue[this.currentTrack])
-    } else if (this.queue.length > 0) {
-      this.currentTrack = 0
-      this.playTrack(this.queue[0])
+      const last = this.history[this.history.length - 1]
+      if (last !== this.currentTrack && last >= 0 && last < this.queue.length) {
+        this.currentTrack = this.history.pop()
+        this.playTrack(this.queue[this.currentTrack])
+        return
+      }
+      this.history.pop()
     }
+    if (this.queue.length === 0) return
+    this.currentTrack = (this.currentTrack - 1 + this.queue.length) % this.queue.length
+    this.playTrack(this.queue[this.currentTrack])
   }
 
   setVolume(value) {
