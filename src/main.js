@@ -57,7 +57,7 @@ function uiScheduleHide() {
   clearTimeout(uiHideTimer)
   if (uiHidden || !uiAutoHideMedia.matches) return
   uiHideTimer = setTimeout(() => {
-    if (uiAutoHideMedia.matches) {
+    if (uiAutoHideMedia.matches && !screenOff) {
       uiHidden = true
       document.body.classList.add('ui-hidden')
     }
@@ -115,8 +115,7 @@ function animate() {
   )
 
   if (screenOff) {
-    if (!audioEngine.isPlaying && !screenOffUnlocking) exitScreenOff()
-    drawScreenOff(delta)
+    if (!audioEngine.isPlaying && !screenOffUnlocking) finishScreenOff()
     if (screenOffUnlocking) {
       perfMonitor.tick(delta)
       lights.update(audioData)
@@ -331,224 +330,120 @@ searchToggle.addEventListener('click', () => {
 
 // Screen-off simulation
 const screenOffOverlay = document.getElementById('screen-off')
-const screenOffHandle = document.getElementById('screen-off-handle')
-const screenOffCanvas = document.getElementById('screen-off-canvas')
-const screenOffTargetEl = document.querySelector('.screen-off-target')
 const screenOffToggle = document.getElementById('screen-off-toggle')
-const sctx = screenOffCanvas.getContext('2d')
+const screenOffPowerIcon = screenOffToggle.querySelector('.icon-power')
+const screenOffLightIcon = screenOffToggle.querySelector('.icon-light')
 
-let sparks = []
-let rings = []
 let screenOffDragging = false
 let screenOffStartY = 0
 let screenOffTravel = 0
-let screenOffProgress = 0
+let screenOffProgress = 1
 let screenOffUnlocking = false
 
-function screenOffResize() {
-  const dpr = Math.min(window.devicePixelRatio || 1, 1.75)
-  screenOffCanvas.width = Math.floor(window.innerWidth * dpr)
-  screenOffCanvas.height = Math.floor(window.innerHeight * dpr)
-  sctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-}
-window.addEventListener('resize', screenOffResize)
-screenOffResize()
+const SCREEN_OFF_TWEEN = 'transform 0.95s cubic-bezier(0.33, 1, 0.68, 1)'
+const SCREEN_OFF_OVERLAY_TWEEN = 'opacity 1.05s ease'
+const SCREEN_OFF_ICON_TWEEN = 'opacity 0.9s ease'
 
-function getScreenOffTarget() {
-  const r = screenOffTargetEl.getBoundingClientRect()
-  return { x: r.left + r.width / 2, y: r.top + r.height / 2 }
+function setScreenOffTweens(on) {
+  screenOffToggle.style.transition = on ? SCREEN_OFF_TWEEN : 'none'
+  screenOffOverlay.style.transition = on ? SCREEN_OFF_OVERLAY_TWEEN : 'none'
+  screenOffPowerIcon.style.transition = on ? SCREEN_OFF_ICON_TWEEN : 'none'
+  screenOffLightIcon.style.transition = on ? SCREEN_OFF_ICON_TWEEN : 'none'
 }
 
-function spawnSpark(x, y, vx, vy, g, max, size) {
-  if (sparks.length > 220) return
-  const cols = ['255,214,102', '255,178,74', '255,240,190', '255,150,50']
-  sparks.push({
-    x, y, vx, vy, g, life: 0, max,
-    size, seed: Math.random() * 100,
-    color: cols[(Math.random() * cols.length) | 0]
-  })
+function setScreenOffState(p) {
+  screenOffProgress = Math.max(0, Math.min(1, p))
+  screenOffToggle.style.transform = 'translateY(' + (screenOffProgress * screenOffTravel).toFixed(1) + 'px)'
+  screenOffOverlay.style.opacity = screenOffProgress.toFixed(3)
+  screenOffPowerIcon.style.opacity = (1 - screenOffProgress).toFixed(3)
+  screenOffLightIcon.style.opacity = screenOffProgress.toFixed(3)
 }
 
-function spawnAmbientSparks() {
-  const w = window.innerWidth
-  const h = window.innerHeight
-  const x = w / 2 + (Math.random() - 0.5) * w * 0.34
-  const y = h * 0.94 - Math.random() * 30
-  spawnSpark(x, y, (Math.random() - 0.5) * 26, -(70 + Math.random() * 120), 24, 1 + Math.random() * 1.2, 1 + Math.random() * 1.2)
+function computeScreenOffTravel() {
+  const r = screenOffToggle.getBoundingClientRect()
+  const topCenter = r.top + r.height / 2
+  const bottomCenter = window.innerHeight * (1 - 0.14) - r.height
+  screenOffTravel = Math.max(40, topCenter - bottomCenter)
 }
 
-function spawnDragSparks() {
-  const r = screenOffHandle.getBoundingClientRect()
-  const hx = r.left + r.width / 2
-  const hy = r.top + r.height / 2
-  for (let i = 0; i < 3; i++) {
-    spawnSpark(
-      hx + (Math.random() - 0.5) * 34,
-      hy + (Math.random() - 0.5) * 22,
-      (Math.random() - 0.5) * 100,
-      -(70 + Math.random() * 230),
-      46,
-      0.45 + Math.random() * 0.7,
-      1.4 + Math.random() * 1.6
-    )
-  }
+function startScreenOff() {
+  computeScreenOffTravel()
+  screenOff = true
+  screenOffUnlocking = false
+  document.body.classList.add('screen-off')
+  screenOffOverlay.classList.remove('unlocking')
+  screenOffOverlay.classList.add('open')
+  setScreenOffState(0)
+  setScreenOffTweens(true)
+  void screenOffOverlay.offsetWidth
+  setScreenOffState(1)
 }
 
-function spawnBurst(x, y) {
-  for (let i = 0; i < 90; i++) {
-    const ang = Math.random() * Math.PI * 2
-    const sp = 70 + Math.random() * 300
-    spawnSpark(x, y, Math.cos(ang) * sp, Math.sin(ang) * sp, 280, 0.6 + Math.random() * 0.9, 1.2 + Math.random() * 1.8)
-  }
-  rings.push({ x, y, r0: 12, maxR: Math.min(window.innerWidth, window.innerHeight) * 0.55, life: 0, max: 0.6 })
-}
-
-function drawScreenOff(delta) {
-  if (!screenOffUnlocking) {
-    if (sparks.length < 60 && Math.random() < 0.5) spawnAmbientSparks()
-    if (screenOffDragging) spawnDragSparks()
-  }
-
-  const w = window.innerWidth
-  const h = window.innerHeight
-  sctx.clearRect(0, 0, w, h)
-  sctx.globalCompositeOperation = 'lighter'
-  sctx.lineCap = 'round'
-
-  for (let i = sparks.length - 1; i >= 0; i--) {
-    const s = sparks[i]
-    s.life += delta
-    if (s.life >= s.max) { sparks.splice(i, 1); continue }
-    s.x += s.vx * delta
-    s.y += s.vy * delta
-    s.vy += s.g * delta
-    const fade = 1 - s.life / s.max
-    const flick = 0.55 + 0.45 * Math.sin(s.life * 46 + s.seed)
-    const a = fade * flick
-    if (a <= 0.02) { sparks.splice(i, 1); continue }
-    const sx = s.x - s.vx * 0.03
-    const sy = s.y - s.vy * 0.03
-    sctx.strokeStyle = 'rgba(' + s.color + ',' + (a * 0.55).toFixed(3) + ')'
-    sctx.lineWidth = s.size * 2.4
-    sctx.beginPath(); sctx.moveTo(sx, sy); sctx.lineTo(s.x, s.y); sctx.stroke()
-    sctx.strokeStyle = 'rgba(255,250,235,' + a.toFixed(3) + ')'
-    sctx.lineWidth = s.size
-    sctx.beginPath(); sctx.moveTo(sx, sy); sctx.lineTo(s.x, s.y); sctx.stroke()
-  }
-
-  for (let i = rings.length - 1; i >= 0; i--) {
-    const r = rings[i]
-    r.life += delta
-    if (r.life >= r.max) { rings.splice(i, 1); continue }
-    const p = r.life / r.max
-    const rad = r.r0 + p * p * r.maxR
-    const a = (1 - p) * 0.85
-    sctx.strokeStyle = 'rgba(255,214,102,' + a.toFixed(3) + ')'
-    sctx.lineWidth = 2.5 * (1 - p) + 0.5
-    sctx.beginPath(); sctx.arc(r.x, r.y, rad, 0, Math.PI * 2); sctx.stroke()
-  }
-
-  sctx.globalCompositeOperation = 'source-over'
-}
-
-function setScreenOffProgress(progress) {
-  screenOffProgress = Math.max(0, Math.min(1, progress))
-  screenOffHandle.style.transform = 'translateY(' + (-(screenOffProgress * screenOffTravel)).toFixed(1) + 'px)'
-  screenOffHandle.style.filter = 'brightness(' + (1 + screenOffProgress * 1.25).toFixed(2) + ')'
-  screenOffOverlay.style.opacity = (1 - screenOffProgress).toFixed(3)
-}
-
-function exitScreenOff() {
-  if (!screenOff || screenOffUnlocking) return
+function finishScreenOff() {
+  if (screenOffUnlocking) return
+  screenOff = false
   screenOffUnlocking = true
-  screenOffDragging = false
   uiShow()
-  screenOffOverlay.classList.remove('revealing')
-  screenOffOverlay.style.transition = 'opacity 0.35s ease'
-  screenOffOverlay.style.opacity = '0'
   screenOffOverlay.classList.add('unlocking')
-  screenOffToggle.classList.remove('pressed')
-  screenOffHandle.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.15), filter 0.3s ease'
-  setScreenOffProgress(1)
-  const t = getScreenOffTarget()
-  spawnBurst(t.x, t.y)
-  setTimeout(() => {
-    screenOff = false
-    screenOffOverlay.classList.remove('open')
-  }, 380)
+  screenOffToggle.style.transition = 'transform 0.4s cubic-bezier(0.2, 0.9, 0.3, 1.12)'
+  screenOffOverlay.style.transition = 'opacity 0.4s ease'
+  screenOffPowerIcon.style.transition = 'opacity 0.35s ease'
+  screenOffLightIcon.style.transition = 'opacity 0.35s ease'
+  setScreenOffState(0)
+  document.body.classList.remove('screen-off')
+  screenOffOverlay.classList.remove('open')
   setTimeout(() => {
     screenOffUnlocking = false
     screenOffOverlay.classList.remove('unlocking')
-    screenOffOverlay.classList.remove('revealing')
+    setScreenOffTweens(false)
     screenOffOverlay.style.opacity = ''
     screenOffOverlay.style.transition = ''
-    screenOffHandle.style.transition = ''
-    screenOffHandle.style.filter = ''
-    setScreenOffProgress(0)
-    sparks = []
-    rings = []
-  }, 800)
+    screenOffToggle.style.transform = ''
+    screenOffToggle.style.transition = ''
+    screenOffPowerIcon.style.transition = ''
+    screenOffLightIcon.style.transition = ''
+  }, 650)
 }
 
-function resetScreenOffPosition() {
-  screenOffHandle.style.transition = 'transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), filter 0.35s ease'
-  setScreenOffProgress(0)
-  setTimeout(() => {
-    screenOffHandle.style.transition = ''
-    screenOffOverlay.classList.remove('revealing')
-    screenOffOverlay.style.opacity = ''
-  }, 400)
+function springScreenOffBack() {
+  setScreenOffTweens(true)
+  setScreenOffState(1)
+  setTimeout(() => setScreenOffTweens(false), 1200)
 }
 
 screenOffToggle.addEventListener('click', () => {
-  sparks = []
-  rings = []
-  screenOff = true
-  screenOffUnlocking = false
-  screenOffOverlay.classList.remove('revealing', 'unlocking')
-  screenOffOverlay.style.opacity = ''
-  screenOffOverlay.style.transition = ''
-  screenOffHandle.style.transition = 'none'
-  screenOffHandle.style.filter = ''
-  setScreenOffProgress(0)
-  screenOffToggle.classList.add('pressed')
-  screenOffOverlay.classList.add('open')
+  if (screenOff || screenOffUnlocking) return
+  startScreenOff()
 })
 
-screenOffHandle.addEventListener('pointerdown', (e) => {
-  if (!screenOff) return
+screenOffToggle.addEventListener('pointerdown', (e) => {
+  if (!screenOff || screenOffUnlocking) return
   e.preventDefault()
   screenOffDragging = true
   screenOffStartY = e.clientY
-  const handleRect = screenOffHandle.getBoundingClientRect()
-  const targetRect = screenOffTargetEl.getBoundingClientRect()
-  const handleCenter = handleRect.top + handleRect.height / 2
-  const targetCenter = targetRect.top + targetRect.height / 2
-  screenOffTravel = Math.max(50, handleCenter - targetCenter)
-  screenOffHandle.style.transition = 'none'
-  screenOffOverlay.classList.add('revealing')
+  setScreenOffTweens(false)
 })
 
 window.addEventListener('pointermove', (e) => {
   if (!screenOffDragging || !screenOff) return
-  const dy = e.clientY - screenOffStartY
-  setScreenOffProgress(-dy / screenOffTravel)
+  const p = screenOffProgress + (e.clientY - screenOffStartY) / screenOffTravel
+  setScreenOffState(Math.min(1, Math.max(0.04, p)))
 })
 
 window.addEventListener('pointerup', () => {
   if (!screenOffDragging) return
   screenOffDragging = false
-  if (screenOffProgress >= 0.9) {
-    exitScreenOff()
+  if (screenOffProgress <= 0.15) {
+    finishScreenOff()
   } else {
-    resetScreenOffPosition()
+    springScreenOffBack()
   }
 })
 
 window.addEventListener('pointercancel', () => {
   if (!screenOffDragging) return
   screenOffDragging = false
-  resetScreenOffPosition()
+  springScreenOffBack()
 })
 
 searchInput.addEventListener('input', () => {

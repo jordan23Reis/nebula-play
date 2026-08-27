@@ -93,12 +93,23 @@
   transform: scale(1.05);
 }
 
-.screen-off-toggle.pressed {
-  transform: translateY(46px) scale(0.88);
+.screen-off-toggle .icon-power,
+.screen-off-toggle .icon-light {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 22px;
+  height: 22px;
+}
+
+.screen-off-toggle .icon-light {
+  color: #ffd066;
   opacity: 0;
+}
+
+.screen-off-toggle.pressed {
   border-color: rgba(255, 34, 34, 0.7);
   background: rgba(40, 6, 6, 0.85);
-  transition: transform 0.55s ease, opacity 0.6s ease, border-color 0.3s ease, background 0.3s ease;
 }
 
 .screen-off {
@@ -118,17 +129,40 @@
   pointer-events: auto;
 }
 
-.screen-off.revealing {
-  transition: none;
+body.screen-off .screen-off-toggle {
+  z-index: 1002;
+  border-color: rgba(255, 34, 34, 0.6);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4), 0 0 22px rgba(255, 34, 34, 0.18);
 }
 
-.screen-off-canvas {
+body.screen-off .screen-off-toggle:not(:active) {
+  animation: screenOffBreath 2.4s ease-in-out infinite;
+}
+
+@keyframes screenOffBreath {
+  0%, 100% { box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4), 0 0 14px rgba(255, 34, 34, 0.12); }
+  50% { box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4), 0 0 28px rgba(255, 34, 34, 0.3); }
+}
+
+.screen-off-trail {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 1;
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+  top: 88px;
+  bottom: calc(14vh + 30px);
+  width: 2px;
+  border-radius: 2px;
+  background: linear-gradient(to bottom, rgba(255, 34, 34, 0.55), rgba(255, 34, 34, 0.14) 40%, rgba(255, 34, 34, 0.4));
+  box-shadow: 0 0 10px rgba(255, 34, 34, 0.3);
+  opacity: 0;
+  transition: opacity 0.8s ease;
   pointer-events: none;
+  z-index: 1;
+}
+
+.screen-off.open .screen-off-trail {
+  opacity: 0.9;
 }
 
 .screen-off-target {
@@ -140,7 +174,7 @@
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  border: 1px dashed rgba(255, 210, 74, 0.4);
+  border: 1px dashed rgba(255, 34, 34, 0.4);
   z-index: 1;
   pointer-events: none;
   animation: targetPulse 2.2s ease-in-out infinite;
@@ -151,75 +185,19 @@
   position: absolute;
   inset: 22%;
   border-radius: 50%;
-  background: rgba(255, 210, 74, 0.22);
-  box-shadow: 0 0 18px rgba(255, 210, 74, 0.4);
+  background: rgba(255, 34, 34, 0.22);
+  box-shadow: 0 0 18px rgba(255, 34, 34, 0.4);
 }
 
 .screen-off.unlocking .screen-off-target {
   animation: none;
-  border-color: rgba(255, 210, 74, 0.9);
-  box-shadow: 0 0 30px rgba(255, 210, 74, 0.7);
-}
-
-.screen-off-handle {
-  position: absolute;
-  left: 0;
-  right: 0;
-  margin: 0 auto;
-  bottom: 14vh;
-  width: 66px;
-  height: 66px;
-  border-radius: 50%;
-  border: 1px solid rgba(255, 205, 90, 0.55);
-  background: radial-gradient(circle at 34% 30%, rgba(255, 233, 164, 0.4), rgba(255, 178, 74, 0.12) 46%, rgba(28, 24, 16, 0.96) 78%);
-  color: #ffd066;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow:
-    0 0 20px rgba(255, 190, 70, 0.32),
-    inset 0 0 16px rgba(255, 200, 90, 0.22);
-  animation: orbGlow 2.6s ease-in-out infinite;
-  user-select: none;
-  -webkit-user-select: none;
-  touch-action: none;
-  -webkit-tap-highlight-color: transparent;
-  will-change: transform;
-  z-index: 2;
-}
-
-.screen-off-handle::before {
-  content: '';
-  position: absolute;
-  inset: -12px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(255, 190, 74, 0.4), transparent 62%);
-  animation: haloPulse 2.6s ease-out infinite;
-  pointer-events: none;
-}
-
-.screen-off-handle svg {
-  filter: drop-shadow(0 0 6px rgba(255, 220, 120, 0.8));
-}
-
-@keyframes orbGlow {
-  0%, 100% { filter: drop-shadow(0 0 6px rgba(255, 190, 74, 0.35)); }
-  50% { filter: drop-shadow(0 0 16px rgba(255, 190, 74, 0.6)); }
-}
-
-@keyframes haloPulse {
-  0% { opacity: 0.1; transform: scale(0.85); }
-  55% { opacity: 0.65; transform: scale(1.18); }
-  100% { opacity: 0; transform: scale(1.32); }
+  border-color: rgba(255, 34, 34, 0.9);
+  box-shadow: 0 0 30px rgba(255, 34, 34, 0.7);
 }
 
 @keyframes targetPulse {
-  0%, 100% { transform: scale(1); border-color: rgba(255, 210, 74, 0.35); }
-  50% { transform: scale(1.06); border-color: rgba(255, 210, 74, 0.65); }
-}
-
-.screen-off.unlocking .screen-off-handle {
-  animation: none;
+  0%, 100% { transform: scale(1); border-color: rgba(255, 34, 34, 0.3); }
+  50% { transform: scale(1.06); border-color: rgba(255, 34, 34, 0.6); }
 }
 
 .nav-overlay {
