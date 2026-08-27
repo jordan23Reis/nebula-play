@@ -115,7 +115,13 @@ export class AudioEngine {
         onError: (e) => {
           console.error('[Nebula] YT error:', e.data)
           this.loading = false
+          this.isPlaying = false
           this.updatePlayerUI()
+          const code = e.data
+          if (code === 100 || code === 101 || code === 105 || code === 150) {
+            console.warn('[Nebula] Vídeo indisponível/sem embed, pulando para o próximo')
+            setTimeout(() => this.next(), 800)
+          }
         }
       }
     })
