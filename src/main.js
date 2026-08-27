@@ -131,6 +131,20 @@ progressBar.addEventListener('mousedown', (e) => {
   document.addEventListener('mouseup', onUp)
 })
 
+progressBar.addEventListener('touchstart', (e) => {
+  e.preventDefault()
+  updateSeek(e.touches[0])
+  const onMove = (e) => { e.preventDefault(); updateSeek(e.touches[0]) }
+  const onEnd = () => {
+    document.removeEventListener('touchmove', onMove)
+    document.removeEventListener('touchend', onEnd)
+    document.removeEventListener('touchcancel', onEnd)
+  }
+  document.addEventListener('touchmove', onMove, { passive: false })
+  document.addEventListener('touchend', onEnd)
+  document.addEventListener('touchcancel', onEnd)
+})
+
 // Nav overlay
 const navToggle = document.getElementById('nav-toggle')
 const navOverlay = document.getElementById('nav-overlay')
