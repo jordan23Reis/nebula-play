@@ -1,0 +1,58 @@
+:root {
+  --bg: #040405;
+  --surface: rgba(12, 12, 16, 0.7);
+  --surface-hover: rgba(20, 20, 28, 0.8);
+  --border: rgba(255, 255, 255, 0.06);
+  --text: #ececee;
+  --text-secondary: #8f959e;
+  --accent: #ff2222;
+  --accent-dim: #7a0d0d;
+  --accent-soft: #ff5b5b;
+  --radius: 10px;
+  --sidebar-width-collapsed: 56px;
+  --sidebar-width-expanded: 260px;
+  --player-height: 80px;
+  --blur: 20px;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', -apple-system, sans-serif;
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+}
+
+#nebula-canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
+
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.1);
+  border-radius: 2px;
+}
+
+::selection {
+  background: var(--accent);
+  color: white;
+}

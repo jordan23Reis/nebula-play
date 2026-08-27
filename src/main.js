@@ -1,0 +1,452 @@
+import * as THREE from 'three'
+import { SceneManager } from './scene/SceneManager.js'
+import { Lights } from './scene/lights.js'
+import { InfiniteTunnel } from './visuals/InfiniteTunnel.js'
+import { Starfield } from './visuals/Starfield.js'
+import { Particles } from './visuals/Particles.js'
+import { AudioEngine } from './audio/AudioEngine.js'
+import { searchYouTube } from './api/youtube.js'
+import { FavoritesManager } from './data/mockData.js'
+
+const canvas = document.getElementById('nebula-canvas')
+
+const sceneManager = new SceneManager(canvas)
+const { scene, camera } = sceneManager
+
+const lights = new Lights(scene)
+const tunnel = new InfiniteTunnel(scene)
+const starfield = new Starfield(scene)
+const particles = new Particles(scene)
+const audioEngine = new AudioEngine()
+
+const clock = new THREE.Timer()
+let audioData = { bass: 0, mid: 0, treble: 0, waveform: new Uint8Array(128), frequency: new Uint8Array(128) }
+let tunnelOffset = 0
+let tunnelSpeed = 0.75
+
+camera.position.set(0, 0, 0)
+camera.lookAt(0, 0, -10)
+
+let camAngle = 0
+let camBob = 0
+
+const progressFill = document.getElementById('progress-fill')
+const timeCurrent = document.getElementById('time-current')
+const timeTotal = document.getElementById('time-total')
+
+function formatTime(sec) {
+  const m = Math.floor(sec / 60)
+  const s = Math.floor(sec % 60)
+  return m + ':' + (s < 10 ? '0' : '') + s
+}
+
+function animate() {
+  requestAnimationFrame(animate)
+  clock.update()
+  const delta = clock.getDelta()
+  const elapsed = clock.getElapsed()
+
+  if (audioEngine.isPlaying) {
+    audioData = audioEngine.getAnalysis()
+  }
+
+  const targetSpeed = audioEngine.isPlaying ? 5.0 + audioData.bass * 3 : 0.75
+  tunnelSpeed += (targetSpeed - tunnelSpeed) * 0.02
+  tunnelOffset += tunnelSpeed * delta
+
+  const baseSpeed = audioEngine.isPlaying ? 1.0 : 0.2
+  const moveSpeed = baseSpeed + audioData.bass * 2.0
+
+  camAngle += delta * 0.1 * moveSpeed
+  camBob += delta * 0.15 * moveSpeed
+
+  camera.position.x = Math.sin(camAngle) * 0.5
+  camera.position.y = Math.cos(camBob) * 0.3
+  camera.position.z = 0
+
+  camera.lookAt(
+    Math.sin(camAngle + 0.1) * 0.3,
+    Math.cos(camBob + 0.1) * 0.2,
+    -10
+  )
+
+  lights.update(audioData)
+  sceneManager.update(delta, audioData)
+  tunnel.update(delta, tunnelOffset, audioData, audioEngine.isPlaying)
+  starfield.update(delta)
+  particles.update(delta, elapsed, audioData)
+
+  if (audioEngine.isPlaying) {
+    const current = audioEngine.getCurrentTime()
+    const duration = audioEngine.getDuration()
+    if (duration > 0) {
+      const progress = Math.min(current / duration, 1)
+      progressFill.style.width = (progress * 100) + '%'
+      timeCurrent.textContent = formatTime(current)
+      timeTotal.textContent = formatTime(duration)
+    }
+  }
+
+  sceneManager.render()
+}
+
+animate()
+
+audioEngine.onTrackEnd = () => {
+  audioEngine.next()
+}
+
+// Progress bar
+const progressBar = document.getElementById('progress-bar')
+
+function updateSeek(e) {
+  const rect = progressBar.getBoundingClientRect()
+  const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width))
+  const fraction = x / rect.width
+  audioEngine.seek(fraction)
+  progressFill.style.width = (fraction * 100) + '%'
+}
+
+progressBar.addEventListener('mousedown', (e) => {
+  e.preventDefault()
+  updateSeek(e)
+  const onMove = (e) => { e.preventDefault(); updateSeek(e) }
+  const onUp = () => {
+    document.removeEventListener('mousemove', onMove)
+    document.removeEventListener('mouseup', onUp)
+  }
+  document.addEventListener('mousemove', onMove)
+  document.addEventListener('mouseup', onUp)
+})
+
+// Nav overlay
+const navToggle = document.getElementById('nav-toggle')
+const navOverlay = document.getElementById('nav-overlay')
+
+navToggle.addEventListener('click', () => {
+  navToggle.classList.toggle('active')
+  navOverlay.classList.toggle('open')
+})
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && navOverlay.classList.contains('open')) {
+    navToggle.classList.remove('active')
+    navOverlay.classList.remove('open')
+  }
+})
+
+// Tabs
+const navLinks = document.querySelectorAll('.nav-link[data-tab]')
+const tabs = document.querySelectorAll('.nav-tab')
+
+navLinks.forEach(link => {
+  link.addEventListener('click', (e) => {
+    e.preventDefault()
+    const tabId = link.dataset.tab
+    navLinks.forEach(l => l.classList.remove('active'))
+    link.classList.add('active')
+    tabs.forEach(t => t.classList.remove('active'))
+    document.getElementById('tab-' + tabId).classList.add('active')
+  })
+})
+
+// Favorites section
+const navFavorites = document.getElementById('nav-favorites')
+
+function renderFavorites() {
+  navFavorites.innerHTML = ''
+  const favs = FavoritesManager.getAll()
+
+  if (favs.length === 0) {
+    navFavorites.innerHTML = '<div class="search-empty">Nenhuma música curtida ainda</div>'
+    return
+  }
+
+  const header = document.createElement('div')
+  header.className = 'fav-header'
+  header.innerHTML = `
+    <div class="fav-header-info">
+      <div class="fav-header-title">Músicas Curtidas</div>
+      <div class="fav-header-count">${favs.length} música${favs.length !== 1 ? 's' : ''}</div>
+    </div>
+    <button class="fav-play-btn" title="Tocar do início">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+    </button>
+  `
+  header.querySelector('.fav-play-btn').addEventListener('click', () => {
+    audioEngine.playTrack(favs[0], favs)
+    navToggle.classList.remove('active')
+    navOverlay.classList.remove('open')
+  })
+  navFavorites.appendChild(header)
+
+  const list = document.createElement('div')
+  list.className = 'search-results'
+  favs.forEach((track, i) => {
+    const min = Math.floor(track.duration / 60)
+    const sec = track.duration % 60
+    const el = document.createElement('div')
+    el.className = 'search-track'
+    const isFav = FavoritesManager.isFavorite(track.videoId)
+    el.innerHTML = `
+      <img class="search-track-cover" src="${track.thumbnail || track.albumCover || ''}" alt="" />
+      <div class="search-track-info">
+        <div class="search-track-title">${track.title}</div>
+        <div class="search-track-artist">${track.artist}</div>
+      </div>
+      <span class="search-track-dur">${min}:${sec < 10 ? '0' : ''}${sec}</span>
+      <button class="search-track-fav${isFav ? ' active' : ''}" data-vid="${track.videoId}">${isFav ? '&#9829;' : '&#9825;'}</button>
+    `
+    el.addEventListener('click', () => {
+      audioEngine.playTrack(track, favs)
+      navToggle.classList.remove('active')
+      navOverlay.classList.remove('open')
+    })
+
+    const favBtn = el.querySelector('.search-track-fav')
+    favBtn.addEventListener('click', (e) => {
+      e.stopPropagation()
+      const vid = favBtn.dataset.vid
+      if (FavoritesManager.isFavorite(vid)) {
+        FavoritesManager.remove(vid)
+        favBtn.classList.remove('active')
+        favBtn.innerHTML = '&#9825;'
+      } else {
+        FavoritesManager.add(track)
+        favBtn.classList.add('active')
+        favBtn.innerHTML = '&#9829;'
+      }
+      renderFavorites()
+    })
+
+    list.appendChild(el)
+  })
+  navFavorites.appendChild(list)
+}
+
+renderFavorites()
+
+// Search
+const searchInput = document.getElementById('search-input')
+const searchResults = document.getElementById('search-results')
+let searchTimeout = null
+
+searchInput.addEventListener('input', () => {
+  clearTimeout(searchTimeout)
+  const query = searchInput.value.trim()
+  if (query.length < 2) {
+    searchResults.innerHTML = '<div class="search-empty">Digite pelo menos 2 caracteres</div>'
+    return
+  }
+  searchResults.innerHTML = '<div class="search-loading">Buscando...</div>'
+  searchTimeout = setTimeout(() => doSearch(query), 400)
+})
+
+async function doSearch(query) {
+  try {
+    const ytTracks = await searchYouTube(query, 20)
+    if (ytTracks.length === 0) {
+      searchResults.innerHTML = '<div class="search-empty">Nenhum resultado encontrado</div>'
+      return
+    }
+
+    renderSearchResults(ytTracks)
+  } catch (err) {
+    console.error('Search error:', err)
+    searchResults.innerHTML = '<div class="search-empty">Erro ao buscar</div>'
+  }
+}
+
+function renderSearchResults(tracks) {
+  searchResults.innerHTML = ''
+  tracks.forEach(track => {
+    const el = document.createElement('div')
+    el.className = 'search-track'
+    const min = Math.floor(track.duration / 60)
+    const sec = track.duration % 60
+    const isFav = track.videoId ? FavoritesManager.isFavorite(track.videoId) : false
+    el.innerHTML = `
+      <img class="search-track-cover" src="${track.thumbnail || track.albumCover || ''}" alt="" />
+      <div class="search-track-info">
+        <div class="search-track-title">${track.title}</div>
+        <div class="search-track-artist">${track.artist}</div>
+      </div>
+      <span class="search-track-dur">${min}:${sec < 10 ? '0' : ''}${sec}</span>
+      ${track.videoId ? `<button class="search-track-fav${isFav ? ' active' : ''}" data-vid="${track.videoId}">${isFav ? '&#9829;' : '&#9825;'}</button>` : ''}
+    `
+    el.addEventListener('click', () => {
+      audioEngine.playTrack(track, tracks)
+      navToggle.classList.remove('active')
+      navOverlay.classList.remove('open')
+    })
+
+    const favBtn = el.querySelector('.search-track-fav')
+    if (favBtn) {
+      favBtn.addEventListener('click', (e) => {
+        e.stopPropagation()
+        const vid = favBtn.dataset.vid
+        if (FavoritesManager.isFavorite(vid)) {
+          FavoritesManager.remove(vid)
+          favBtn.classList.remove('active')
+          favBtn.innerHTML = '&#9825;'
+        } else {
+          FavoritesManager.add(track)
+          favBtn.classList.add('active')
+          favBtn.innerHTML = '&#9829;'
+        }
+        renderFavorites()
+      })
+    }
+
+    searchResults.appendChild(el)
+  })
+}
+
+// Player controls
+const btnPlay = document.getElementById('btn-play')
+
+btnPlay.addEventListener('click', () => {
+  audioEngine.togglePlay()
+})
+
+document.getElementById('btn-next').addEventListener('click', () => {
+  audioEngine.next()
+})
+
+document.getElementById('btn-prev').addEventListener('click', () => {
+  audioEngine.prev()
+})
+
+window.addEventListener('keydown', (e) => {
+  if (e.code === 'Space' && e.target === document.body) {
+    e.preventDefault()
+    audioEngine.togglePlay()
+  }
+})
+
+// Volume
+const volumeBar = document.getElementById('volume-bar')
+const volumeFill = document.getElementById('volume-fill')
+
+function updateVolume(e) {
+  const rect = volumeBar.getBoundingClientRect()
+  const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width))
+  const percent = x / rect.width
+  audioEngine.setVolume(percent)
+  volumeFill.style.width = (percent * 100) + '%'
+}
+
+volumeBar.addEventListener('mousedown', (e) => {
+  e.preventDefault()
+  updateVolume(e)
+  const onMove = (e) => { e.preventDefault(); updateVolume(e) }
+  const onUp = () => {
+    document.removeEventListener('mousemove', onMove)
+    document.removeEventListener('mouseup', onUp)
+  }
+  document.addEventListener('mousemove', onMove)
+  document.addEventListener('mouseup', onUp)
+})
+
+volumeBar.addEventListener('touchstart', (e) => {
+  e.preventDefault()
+  updateVolume(e.touches[0])
+  const onMove = (e) => { e.preventDefault(); updateVolume(e.touches[0]) }
+  const onEnd = () => {
+    document.removeEventListener('touchmove', onMove)
+    document.removeEventListener('touchend', onEnd)
+  }
+  document.addEventListener('touchmove', onMove, { passive: false })
+  document.addEventListener('touchend', onEnd)
+})
+
+// Queue menu
+const playerInfo = document.getElementById('player-info')
+const queueMenu = document.getElementById('queue-menu')
+const queueSections = document.getElementById('queue-sections')
+const queueClose = document.getElementById('queue-close')
+
+const equalizerSVG = `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="14" width="3" height="8" rx="1"><animate attributeName="height" values="8;4;8" dur="0.8s" repeatCount="indefinite"/><animate attributeName="y" values="14;16;14" dur="0.8s" repeatCount="indefinite"/></rect><rect x="10.5" y="8" width="3" height="14" rx="1"><animate attributeName="height" values="14;6;14" dur="0.6s" repeatCount="indefinite"/><animate attributeName="y" values="8;12;8" dur="0.6s" repeatCount="indefinite"/></rect><rect x="17" y="12" width="3" height="10" rx="1"><animate attributeName="height" values="10;5;10" dur="0.7s" repeatCount="indefinite"/><animate attributeName="y" values="12;15;12" dur="0.7s" repeatCount="indefinite"/></rect></svg>`
+
+function renderQueue() {
+  const queue = audioEngine.queue
+  const currentIdx = audioEngine.currentTrack
+  if (queue.length === 0) {
+    queueSections.innerHTML = '<div class="search-empty">Nenhuma música na fila</div>'
+    return
+  }
+
+  let html = ''
+  queue.forEach((track, i) => {
+    const isActive = i === currentIdx
+    const min = Math.floor(track.duration / 60)
+    const sec = track.duration % 60
+    const isFav = track.videoId ? FavoritesManager.isFavorite(track.videoId) : false
+    html += `
+      <div class="queue-item${isActive ? ' active' : ''}">
+        <img class="queue-item-thumb" src="${track.albumCover || track.thumbnail || ''}" alt="" />
+        <div class="queue-item-info">
+          <span class="queue-item-title">${track.title}</span>
+          <span class="queue-item-artist">${track.artist}</span>
+        </div>
+        <span class="queue-item-dur">${min}:${sec < 10 ? '0' : ''}${sec}</span>
+        ${track.videoId ? `<button class="queue-item-fav${isFav ? ' active' : ''}" data-vid="${track.videoId}">${isFav ? '&#9829;' : '&#9825;'}</button>` : ''}
+      </div>`
+  })
+
+  queueSections.innerHTML = html
+
+  queueSections.querySelectorAll('.queue-item').forEach((el, i) => {
+    el.style.cursor = 'pointer'
+    el.addEventListener('click', () => {
+      audioEngine.playFromQueue(i)
+      queueOpen = false
+      queueMenu.classList.remove('open')
+    })
+
+    const favBtn = el.querySelector('.queue-item-fav')
+    if (favBtn) {
+      favBtn.addEventListener('click', (e) => {
+        e.stopPropagation()
+        const vid = favBtn.dataset.vid
+        if (FavoritesManager.isFavorite(vid)) {
+          FavoritesManager.remove(vid)
+          favBtn.classList.remove('active')
+          favBtn.innerHTML = '&#9825;'
+        } else {
+          FavoritesManager.add(audioEngine.queue[i])
+          favBtn.classList.add('active')
+          favBtn.innerHTML = '&#9829;'
+        }
+        renderFavorites()
+      })
+    }
+  })
+}
+
+let queueOpen = false
+
+function toggleQueue() {
+  queueOpen = !queueOpen
+  if (queueOpen) {
+    renderQueue()
+    queueMenu.classList.add('open')
+  } else {
+    queueMenu.classList.remove('open')
+  }
+}
+
+playerInfo.addEventListener('click', toggleQueue)
+
+queueClose.addEventListener('click', (e) => {
+  e.stopPropagation()
+  queueOpen = false
+  queueMenu.classList.remove('open')
+})
+
+document.addEventListener('click', (e) => {
+  if (queueOpen && !queueMenu.contains(e.target) && !playerInfo.contains(e.target)) {
+    queueOpen = false
+    queueMenu.classList.remove('open')
+  }
+})
