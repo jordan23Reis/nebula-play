@@ -1,11 +1,12 @@
-export const TIERS = { HIGH: 0, MEDIUM: 1, LOW: 2 }
+export const TIERS = { HIGH: 0, MEDIUM: 1, LOW: 2, ULTRA: 3 }
 
-export const TIER_NAMES = ['HIGH', 'MEDIUM', 'LOW']
+export const TIER_NAMES = ['HIGH', 'MEDIUM', 'LOW', 'ULTRA']
 
 export const QUALITY = {
   [TIERS.HIGH]: { pixelRatio: 2, stars: 1500, particles: 2000, frames: 50, shapes: 40, postFX: true },
   [TIERS.MEDIUM]: { pixelRatio: 1.25, stars: 800, particles: 1000, frames: 36, shapes: 30, postFX: true },
-  [TIERS.LOW]: { pixelRatio: 0.75, stars: 400, particles: 400, frames: 26, shapes: 22, postFX: false }
+  [TIERS.LOW]: { pixelRatio: 0.75, stars: 400, particles: 400, frames: 26, shapes: 22, postFX: false },
+  [TIERS.ULTRA]: { pixelRatio: 0.5, stars: 150, particles: 150, frames: 18, shapes: 14, postFX: false }
 }
 
 export class PerfMonitor {
@@ -34,8 +35,11 @@ export class PerfMonitor {
     } else if (this.tier === TIERS.MEDIUM) {
       if (this.fpsEMA > 55) target = TIERS.HIGH
       else if (this.fpsEMA < 28) target = TIERS.LOW
-    } else {
+    } else if (this.tier === TIERS.LOW) {
       if (this.fpsEMA > 45) target = TIERS.MEDIUM
+      else if (this.fpsEMA < 20) target = TIERS.ULTRA
+    } else {
+      if (this.fpsEMA > 35) target = TIERS.LOW
     }
 
     if (target !== this.tier) {
