@@ -423,7 +423,7 @@
   .nav-overlay-content {
     grid-template-columns: 1fr;
     grid-template-rows: auto 1fr;
-    padding: 64px 16px 100px;
+    padding: 96px 16px 100px;
     gap: 16px;
   }
 
