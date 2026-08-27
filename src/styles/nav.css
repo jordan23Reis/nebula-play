@@ -37,6 +37,33 @@
   display: block;
 }
 
+.search-toggle {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 200;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(10, 10, 14, 0.5);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  color: var(--text);
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.25s;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.search-toggle:hover {
+  background: rgba(20, 20, 28, 0.7);
+  border-color: rgba(255, 34, 34, 0.3);
+  transform: scale(1.05);
+}
+
 .nav-overlay {
   position: fixed;
   inset: 0;
@@ -375,8 +402,22 @@
   .nav-toggle {
     top: 12px;
     left: 12px;
-    width: 40px;
-    height: 40px;
+    width: 56px;
+    height: 56px;
+    border-color: rgba(255, 34, 34, 0.35);
+    background: rgba(10, 10, 14, 0.6);
+    color: var(--accent-soft);
+  }
+
+  .search-toggle {
+    display: flex;
+    top: 12px;
+    right: 12px;
+    width: 56px;
+    height: 56px;
+    border-color: rgba(255, 34, 34, 0.35);
+    background: rgba(10, 10, 14, 0.6);
+    color: var(--accent-soft);
   }
 
   .nav-overlay-content {

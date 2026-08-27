@@ -151,14 +151,15 @@ document.addEventListener('keydown', (e) => {
 const navLinks = document.querySelectorAll('.nav-link[data-tab]')
 const tabs = document.querySelectorAll('.nav-tab')
 
+function switchTab(id) {
+  navLinks.forEach(l => l.classList.toggle('active', l.dataset.tab === id))
+  tabs.forEach(t => t.classList.toggle('active', t.id === 'tab-' + id))
+}
+
 navLinks.forEach(link => {
   link.addEventListener('click', (e) => {
     e.preventDefault()
-    const tabId = link.dataset.tab
-    navLinks.forEach(l => l.classList.remove('active'))
-    link.classList.add('active')
-    tabs.forEach(t => t.classList.remove('active'))
-    document.getElementById('tab-' + tabId).classList.add('active')
+    switchTab(link.dataset.tab)
   })
 })
 
@@ -247,6 +248,16 @@ renderFavorites()
 const searchInput = document.getElementById('search-input')
 const searchResults = document.getElementById('search-results')
 let searchTimeout = null
+
+const searchToggle = document.getElementById('search-toggle')
+searchToggle.addEventListener('click', () => {
+  if (!navOverlay.classList.contains('open')) {
+    navToggle.classList.add('active')
+    navOverlay.classList.add('open')
+  }
+  switchTab('search')
+  searchInput.focus()
+})
 
 searchInput.addEventListener('input', () => {
   clearTimeout(searchTimeout)
