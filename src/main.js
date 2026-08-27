@@ -338,8 +338,11 @@ const screenOffTrail = document.getElementById('screen-off-trail')
 const screenOffTrailFill = document.getElementById('screen-off-trail-fill')
 
 let screenOffDragging = false
-let screenOffStartY = 0
-let screenOffTravel = 0
+let screenOffGrabbedY = 0
+let screenOffGrabProgress = 0
+let screenOffBtnBase = 0
+let screenOffTrailTop = 0
+let screenOffTrailLen = 1
 let screenOffProgress = 1
 let screenOffUnlocking = false
 
@@ -356,17 +359,21 @@ function setScreenOffTweens(on) {
 
 function setScreenOffState(p) {
   screenOffProgress = Math.max(0, Math.min(1, p))
-  screenOffButton.style.transform = 'translateY(' + (screenOffProgress * screenOffTravel).toFixed(1) + 'px)'
+  const y = screenOffTrailTop + (screenOffProgress * screenOffTrailLen) - screenOffBtnBase
+  screenOffButton.style.transform = 'translateY(' + y.toFixed(1) + 'px)'
   screenOffBg.style.opacity = screenOffProgress.toFixed(3)
   screenOffPowerIcon.style.opacity = (1 - screenOffProgress).toFixed(3)
   screenOffLightIcon.style.opacity = screenOffProgress.toFixed(3)
   screenOffTrailFill.style.height = (screenOffProgress * 100).toFixed(1) + '%'
 }
 
-function computeScreenOffTravel() {
-  const trailRect = screenOffTrail.getBoundingClientRect()
-  const btnRect = screenOffButton.getBoundingClientRect()
-  screenOffTravel = Math.max(40, trailRect.bottom - (btnRect.top + btnRect.height))
+function screenOffInitAnchors() {
+  screenOffButton.style.transform = ''
+  const tr = screenOffTrail.getBoundingClientRect()
+  const br = screenOffButton.getBoundingClientRect()
+  screenOffTrailTop = tr.top
+  screenOffTrailLen = Math.max(1, tr.bottom - tr.top)
+  screenOffBtnBase = br.bottom
 }
 
 function startScreenOff() {
@@ -380,7 +387,7 @@ function startScreenOff() {
   screenOffOverlay.classList.remove('unlocking')
   screenOffOverlay.classList.add('open')
   screenOffButton.style.opacity = '1'
-  computeScreenOffTravel()
+  screenOffInitAnchors()
 
   setScreenOffTweens(false)
   setScreenOffState(0)
@@ -436,16 +443,22 @@ screenOffToggle.addEventListener('click', () => {
 screenOffButton.addEventListener('pointerdown', (e) => {
   if (!screenOff || screenOffUnlocking) return
   e.preventDefault()
+  const tr = screenOffTrail.getBoundingClientRect()
+  const br = screenOffButton.getBoundingClientRect()
+  screenOffTrailTop = tr.top
+  screenOffTrailLen = Math.max(1, tr.bottom - tr.top)
+  screenOffGrabbedY = e.clientY
+  screenOffGrabProgress = Math.max(0, Math.min(1, (br.bottom - screenOffTrailTop) / screenOffTrailLen))
   screenOffDragging = true
-  screenOffStartY = e.clientY
   screenOffOverlay.classList.add('screen-off-dragging')
   setScreenOffTweens(false)
+  setScreenOffState(screenOffGrabProgress)
 })
 
 window.addEventListener('pointermove', (e) => {
   if (!screenOffDragging || !screenOff) return
-  const p = screenOffProgress + (e.clientY - screenOffStartY) / screenOffTravel
-  setScreenOffState(Math.min(1, Math.max(0.04, p)))
+  const p = screenOffGrabProgress + (e.clientY - screenOffGrabbedY) / screenOffTrailLen
+  setScreenOffState(Math.max(0, Math.min(1, p)))
 })
 
 window.addEventListener('pointerup', (e) => {
@@ -453,7 +466,9 @@ window.addEventListener('pointerup', (e) => {
   screenOffDragging = false
   screenOffOverlay.classList.remove('screen-off-dragging')
   if (!screenOff) return
-  if (screenOffProgress <= 0.05) {
+  const br = screenOffButton.getBoundingClientRect()
+  const p = (br.bottom - screenOffTrailTop) / screenOffTrailLen
+  if (p <= 0.1) {
     finishScreenOff()
   } else {
     springScreenOffBack()
