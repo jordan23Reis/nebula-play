@@ -454,9 +454,7 @@ window.addEventListener('pointerup', (e) => {
   screenOffDragging = false
   screenOffOverlay.classList.remove('screen-off-dragging')
   if (!screenOff) return
-  const moved = Math.abs((e.clientY || screenOffStartY) - screenOffStartY)
-  const tapUnlock = moved < 10
-  if (screenOffProgress <= 0.15 || tapUnlock) {
+  if (screenOffProgress <= 0.15) {
     finishScreenOff()
   } else {
     springScreenOffBack()
