@@ -480,17 +480,86 @@ function renderQueue() {
 
 let queueOpen = false
 
-function toggleQueue() {
-  queueOpen = !queueOpen
-  if (queueOpen) {
+function openQueue() {
+  if (!queueOpen) {
+    queueOpen = true
     renderQueue()
     queueMenu.classList.add('open')
-  } else {
-    queueMenu.classList.remove('open')
   }
 }
 
-playerInfo.addEventListener('click', toggleQueue)
+function toggleQueue() {
+  if (queueOpen) {
+    queueOpen = false
+    queueMenu.classList.remove('open')
+  } else {
+    openQueue()
+  }
+}
+
+function isMobileViewport() {
+  return window.matchMedia('(max-width: 768px)').matches
+}
+
+function handlePlayerInfoTap() {
+  const hasTrack = audioEngine.getCurrentTrack() !== null
+
+  if (hasTrack || !isMobileViewport()) {
+    openQueue()
+    return
+  }
+
+  if (!navOverlay.classList.contains('open')) {
+    navToggle.classList.add('active')
+    navOverlay.classList.add('open')
+  }
+  if (FavoritesManager.getAll().length === 0) {
+    switchTab('search')
+    setTimeout(() => searchInput.focus(), 150)
+  } else {
+    switchTab('home')
+  }
+}
+
+let gesturePointerId = null
+let gestureStartX = 0
+let gestureStartY = 0
+let gestureActive = false
+let gestureDragged = false
+
+playerInfo.addEventListener('pointerdown', (e) => {
+  gesturePointerId = e.pointerId
+  gestureStartX = e.clientX
+  gestureStartY = e.clientY
+  gestureActive = true
+  gestureDragged = false
+})
+
+playerInfo.addEventListener('pointermove', (e) => {
+  if (!gestureActive || e.pointerId !== gesturePointerId) return
+  const dx = e.clientX - gestureStartX
+  const dy = e.clientY - gestureStartY
+  if (Math.abs(dx) > 14 || Math.abs(dy) > 14) gestureDragged = true
+})
+
+playerInfo.addEventListener('pointerup', (e) => {
+  if (e.pointerId !== gesturePointerId || !gestureActive) return
+  gestureActive = false
+  const dx = e.clientX - gestureStartX
+  const dy = e.clientY - gestureStartY
+
+  if (gestureDragged && Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy)) {
+    if (dx < 0) audioEngine.next()
+    else audioEngine.prev()
+    return
+  }
+
+  handlePlayerInfoTap()
+})
+
+playerInfo.addEventListener('pointercancel', () => {
+  gestureActive = false
+})
 
 queueClose.addEventListener('click', (e) => {
   e.stopPropagation()

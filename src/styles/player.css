@@ -40,6 +40,8 @@
   width: 180px;
   flex-shrink: 0;
   cursor: pointer;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .player-info:hover .player-thumb {
