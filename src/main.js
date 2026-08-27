@@ -322,8 +322,31 @@ searchToggle.addEventListener('click', () => {
 // Screen-off simulation
 const screenOffOverlay = document.getElementById('screen-off')
 const screenOffHandle = document.getElementById('screen-off-handle')
-const screenOffFill = document.getElementById('screen-off-fill')
+const screenOffLane = document.getElementById('screen-off-lane')
 const screenOffToggle = document.getElementById('screen-off-toggle')
+
+const sparkDefs = []
+;(function buildSparks() {
+  const count = 14
+  for (let i = 0; i < count; i++) {
+    const f = (i + 0.5) / count
+    const cell = document.createElement('div')
+    cell.className = 'spark-cell'
+    const bolt = Math.random() > 0.4
+    const size = 7 + Math.random() * 8
+    cell.style.top = (f * 100) + '%'
+    cell.style.marginLeft = (-size / 2) + 'px'
+    cell.innerHTML = bolt
+      ? '<svg class="spark" width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z"/></svg>'
+      : '<svg class="spark spark-star" width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0l2.4 9.6L24 12l-9.6 2.4L12 24l-2.4-9.6L0 12l9.6-2.4z"/></svg>'
+    const inner = cell.firstElementChild
+    inner.style.animationDelay = (Math.random() * -2).toFixed(2) + 's'
+    inner.style.animationDuration = (1.2 + Math.random() * 1.4).toFixed(2) + 's'
+    inner.style.setProperty('--rot', (Math.random() * 360 - 180).toFixed(0) + 'deg')
+    screenOffLane.appendChild(cell)
+    sparkDefs.push({ cell, f })
+  }
+})()
 
 let screenOffDragging = false
 let screenOffStartY = 0
@@ -333,28 +356,37 @@ let screenOffProgress = 0
 function setScreenOffProgress(progress) {
   screenOffProgress = Math.max(0, Math.min(1, progress))
   screenOffHandle.style.transform = 'translateY(' + (-(screenOffProgress * screenOffTravel)).toFixed(1) + 'px)'
-  screenOffFill.style.height = (screenOffProgress * 100).toFixed(1) + '%'
+  screenOffHandle.style.filter = 'brightness(' + (1 + screenOffProgress * 1.3).toFixed(2) + ') drop-shadow(0 0 ' + (26 + screenOffProgress * 30).toFixed(0) + 'px rgba(255,210,74,0.4))'
+  sparkDefs.forEach(s => {
+    s.cell.classList.toggle('dead', s.f + screenOffProgress > 1)
+  })
 }
 
-function resetScreenOffSlider() {
+function resetScreenOffProgress() {
   setScreenOffProgress(0)
 }
 
 function exitScreenOff() {
   if (!screenOff) return
   screenOff = false
+  screenOffOverlay.classList.add('unlocking')
   screenOffOverlay.classList.remove('open')
-  screenOffHandle.style.transition = 'transform 0.45s cubic-bezier(0.4, 0, 0.2, 1)'
-  screenOffFill.style.transition = 'height 0.45s cubic-bezier(0.4, 0, 0.2, 1)'
-  resetScreenOffSlider()
+  screenOffHandle.style.transition = 'transform 0.45s cubic-bezier(0.4, 0, 0.2, 1), filter 0.45s ease'
+  resetScreenOffProgress()
   setTimeout(() => {
+    screenOffOverlay.classList.remove('unlocking')
     screenOffHandle.style.transition = ''
-    screenOffFill.style.transition = ''
-  }, 500)
+    screenOffHandle.style.filter = ''
+    sparkDefs.forEach(s => s.cell.classList.remove('dead'))
+  }, 550)
 }
 
 screenOffToggle.addEventListener('click', () => {
   screenOff = true
+  screenOffHandle.style.transition = 'none'
+  screenOffHandle.style.filter = ''
+  sparkDefs.forEach(s => s.cell.classList.remove('dead'))
+  screenOffOverlay.classList.remove('unlocking')
   screenOffOverlay.classList.add('open')
 })
 
@@ -363,10 +395,14 @@ screenOffHandle.addEventListener('pointerdown', (e) => {
   e.preventDefault()
   screenOffDragging = true
   screenOffStartY = e.clientY
-  const trackRect = screenOffOverlay.querySelector('.screen-off-track').getBoundingClientRect()
-  screenOffTravel = Math.max(50, trackRect.height - screenOffHandle.getBoundingClientRect().height - 8)
+  const handleRect = screenOffHandle.getBoundingClientRect()
+  const targetRect = screenOffToggle.getBoundingClientRect()
+  const handleCenter = handleRect.top + handleRect.height / 2
+  const targetCenter = targetRect.top + targetRect.height / 2
+  screenOffTravel = Math.max(50, handleCenter - targetCenter)
   screenOffHandle.style.transition = 'none'
-  screenOffFill.style.transition = 'none'
+  screenOffHandle.style.filter = ''
+  setScreenOffProgress(screenOffProgress)
 })
 
 window.addEventListener('pointermove', (e) => {
@@ -378,15 +414,13 @@ window.addEventListener('pointermove', (e) => {
 window.addEventListener('pointerup', () => {
   if (!screenOffDragging) return
   screenOffDragging = false
-  if (screenOffProgress >= 0.92) {
+  if (screenOffProgress >= 0.9) {
     exitScreenOff()
   } else {
-    screenOffHandle.style.transition = 'transform 0.35s cubic-bezier(0.4, 0, 0.2, 1)'
-    screenOffFill.style.transition = 'height 0.35s cubic-bezier(0.4, 0, 0.2, 1)'
-    resetScreenOffSlider()
+    screenOffHandle.style.transition = 'transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), filter 0.35s ease'
+    resetScreenOffProgress()
     setTimeout(() => {
       screenOffHandle.style.transition = ''
-      screenOffFill.style.transition = ''
     }, 400)
   }
 })
@@ -394,12 +428,10 @@ window.addEventListener('pointerup', () => {
 window.addEventListener('pointercancel', () => {
   if (!screenOffDragging) return
   screenOffDragging = false
-  screenOffHandle.style.transition = 'transform 0.35s cubic-bezier(0.4, 0, 0.2, 1)'
-  screenOffFill.style.transition = 'height 0.35s cubic-bezier(0.4, 0, 0.2, 1)'
-  resetScreenOffSlider()
+  screenOffHandle.style.transition = 'transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), filter 0.35s ease'
+  resetScreenOffProgress()
   setTimeout(() => {
     screenOffHandle.style.transition = ''
-    screenOffFill.style.transition = ''
   }, 400)
 })
 
