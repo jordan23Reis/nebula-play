@@ -115,7 +115,6 @@ function animate() {
   )
 
   if (screenOff) {
-    if (!audioEngine.isPlaying && !screenOffUnlocking) finishScreenOff()
     if (screenOffUnlocking) {
       perfMonitor.tick(delta)
       lights.update(audioData)
@@ -454,7 +453,7 @@ window.addEventListener('pointerup', (e) => {
   screenOffDragging = false
   screenOffOverlay.classList.remove('screen-off-dragging')
   if (!screenOff) return
-  if (screenOffProgress <= 0.15) {
+  if (screenOffProgress <= 0.05) {
     finishScreenOff()
   } else {
     springScreenOffBack()
