@@ -335,6 +335,7 @@ const screenOffToggle = document.getElementById('screen-off-toggle')
 const screenOffButton = document.getElementById('screen-off-copy')
 const screenOffPowerIcon = screenOffButton.querySelector('.icon-power')
 const screenOffLightIcon = screenOffButton.querySelector('.icon-light')
+const screenOffTrail = document.getElementById('screen-off-trail')
 const screenOffTrailFill = document.getElementById('screen-off-trail-fill')
 
 let screenOffDragging = false
@@ -364,26 +365,28 @@ function setScreenOffState(p) {
 }
 
 function computeScreenOffTravel() {
-  const r = screenOffButton.getBoundingClientRect()
-  const topCenter = r.top + r.height / 2
-  const bottomCenter = window.innerHeight * (1 - 0.14) - r.height
-  screenOffTravel = Math.max(40, bottomCenter - topCenter)
+  const trailRect = screenOffTrail.getBoundingClientRect()
+  const btnRect = screenOffButton.getBoundingClientRect()
+  screenOffTravel = Math.max(40, trailRect.bottom - (btnRect.top + btnRect.height))
 }
 
 function startScreenOff() {
+  if (screenOff || screenOffUnlocking) return
   screenOffToggle.style.display = 'none'
-  screenOffButton.style.display = ''
+  screenOffButton.style.display = 'flex'
   uiShow()
-  computeScreenOffTravel()
   screenOff = true
   screenOffUnlocking = false
   document.body.classList.add('screen-off')
   screenOffOverlay.classList.remove('unlocking')
   screenOffOverlay.classList.add('open')
   screenOffButton.style.opacity = '1'
+  computeScreenOffTravel()
+
+  setScreenOffTweens(false)
   setScreenOffState(0)
+  void screenOffButton.offsetWidth
   setScreenOffTweens(true)
-  void screenOffOverlay.offsetWidth
   setScreenOffState(1)
 }
 
