@@ -1,10 +1,15 @@
 import * as THREE from 'three'
 
 export class Starfield {
-  constructor(scene) {
+  constructor(scene, count = 1500) {
     this.scene = scene
-    this.count = 1500
+    this.count = count
     this.tunnelLength = 200
+    this.build()
+  }
+
+  build() {
+    if (this.mesh) this.dispose()
 
     const geometry = new THREE.BufferGeometry()
     const positions = new Float32Array(this.count * 3)
@@ -35,7 +40,12 @@ export class Starfield {
 
     this.mesh = new THREE.Points(geometry, material)
     this.mesh.renderOrder = 999
-    scene.add(this.mesh)
+    this.scene.add(this.mesh)
+  }
+
+  setDensity(count) {
+    this.count = count
+    this.build()
   }
 
   update(delta) {

@@ -3,6 +3,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js'
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js'
+import { QUALITY, TIERS } from '../performance/PerfMonitor.js'
 
 const VignetteShader = {
   uniforms: {
@@ -105,8 +106,25 @@ export class SceneManager {
     this.vignettePass = new ShaderPass(VignetteShader)
     this.composer.addPass(this.vignettePass)
 
+    this.useComposer = true
+    this.pixelRatio = Math.min(window.devicePixelRatio, 2)
+
     this.time = 0
     this.setupResize()
+  }
+
+  setQuality(tier) {
+    this.useComposer = !!QUALITY[tier].postFX
+    this.pixelRatio = QUALITY[tier].pixelRatio
+    if (tier === TIERS.HIGH || tier === TIERS.MEDIUM) {
+      this.pixelRatio = Math.min(window.devicePixelRatio || 1, this.pixelRatio)
+    }
+    this.renderer.setPixelRatio(this.pixelRatio)
+    this.renderer.setSize(window.innerWidth, window.innerHeight)
+    if (this.useComposer) {
+      this.composer.setSize(window.innerWidth, window.innerHeight)
+    }
+    console.log(`[Perf] SceneManager: postFX=${this.useComposer}, pixelRatio=${this.pixelRatio}`)
   }
 
   setupResize() {
@@ -116,7 +134,7 @@ export class SceneManager {
       this.camera.aspect = w / h
       this.camera.updateProjectionMatrix()
       this.renderer.setSize(w, h)
-      this.composer.setSize(w, h)
+      if (this.useComposer) this.composer.setSize(w, h)
     })
   }
 
@@ -129,6 +147,7 @@ export class SceneManager {
   }
 
   render() {
-    this.composer.render()
+    if (this.useComposer) this.composer.render()
+    else this.renderer.render(this.scene, this.camera)
   }
 }

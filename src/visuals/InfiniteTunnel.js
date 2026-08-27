@@ -12,7 +12,7 @@ const palettes = [
 ]
 
 export class InfiniteTunnel {
-  constructor(scene) {
+  constructor(scene, frameCount = 50, shapeCount = 40) {
     this.scene = scene
     this.group = new THREE.Group()
     scene.add(this.group)
@@ -20,8 +20,8 @@ export class InfiniteTunnel {
     this.frames = []
     this.shapes = []
     this.tunnelLength = 200
-    this.frameCount = 50
-    this.shapeCount = 40
+    this.frameCount = frameCount
+    this.shapeCount = shapeCount
 
     this.currentPalette = 0
     this.targetPalette = 1
@@ -130,6 +130,30 @@ export class InfiniteTunnel {
     }
   }
 
+  setDensity(frameCount, shapeCount) {
+    this.frameCount = frameCount
+    this.shapeCount = shapeCount
+    this.clearAll()
+    this.buildFrames()
+    this.buildShapes()
+  }
+
+  clearAll() {
+    for (const frame of this.frames) {
+      frame.children.forEach(child => {
+        child.geometry.dispose()
+        child.material.dispose()
+      })
+    }
+    for (const shape of this.shapes) {
+      shape.geometry.dispose()
+      shape.material.dispose()
+    }
+    this.frames = []
+    this.shapes = []
+    this.group.clear()
+  }
+
   updateColors(delta, audioData) {
     this.paletteTimer += delta
 
@@ -218,17 +242,7 @@ export class InfiniteTunnel {
   }
 
   dispose() {
-    for (const frame of this.frames) {
-      frame.children.forEach(child => {
-        child.geometry.dispose()
-        child.material.dispose()
-      })
-    }
-    for (const shape of this.shapes) {
-      shape.geometry.dispose()
-      shape.material.dispose()
-    }
-    this.group.clear()
+    this.clearAll()
     this.scene.remove(this.group)
   }
 }

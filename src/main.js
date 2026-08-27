@@ -7,6 +7,7 @@ import { Particles } from './visuals/Particles.js'
 import { AudioEngine } from './audio/AudioEngine.js'
 import { searchYouTube } from './api/youtube.js'
 import { FavoritesManager } from './data/mockData.js'
+import { PerfMonitor, QUALITY } from './performance/PerfMonitor.js'
 
 const canvas = document.getElementById('nebula-canvas')
 
@@ -18,6 +19,15 @@ const tunnel = new InfiniteTunnel(scene)
 const starfield = new Starfield(scene)
 const particles = new Particles(scene)
 const audioEngine = new AudioEngine()
+
+const perfMonitor = new PerfMonitor()
+perfMonitor.onTierChange = (prev, tier) => {
+  const q = QUALITY[tier]
+  sceneManager.setQuality(tier)
+  tunnel.setDensity(q.frames, q.shapes)
+  starfield.setDensity(q.stars)
+  particles.setDensity(q.particles)
+}
 
 const clock = new THREE.Timer()
 let audioData = { bass: 0, mid: 0, treble: 0, waveform: new Uint8Array(128), frequency: new Uint8Array(128) }
@@ -45,6 +55,8 @@ function animate() {
   clock.update()
   const delta = clock.getDelta()
   const elapsed = clock.getElapsed()
+
+  perfMonitor.tick(delta)
 
   if (audioEngine.isPlaying) {
     audioData = audioEngine.getAnalysis()

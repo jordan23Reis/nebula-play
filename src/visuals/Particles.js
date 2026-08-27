@@ -1,9 +1,14 @@
 import * as THREE from 'three'
 
 export class Particles {
-  constructor(scene) {
+  constructor(scene, count = 2000) {
     this.scene = scene
-    this.count = 2000
+    this.count = count
+    this.build()
+  }
+
+  build() {
+    if (this.mesh) this.dispose()
 
     const geometry = new THREE.BufferGeometry()
     const positions = new Float32Array(this.count * 3)
@@ -67,7 +72,12 @@ export class Particles {
     })
 
     this.mesh = new THREE.Points(geometry, material)
-    scene.add(this.mesh)
+    this.scene.add(this.mesh)
+  }
+
+  setDensity(count) {
+    this.count = count
+    this.build()
   }
 
   update(delta, elapsed, audioData) {
