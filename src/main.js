@@ -117,6 +117,15 @@ function animate() {
   if (screenOff) {
     if (!audioEngine.isPlaying && !screenOffUnlocking) exitScreenOff()
     drawScreenOff(delta)
+    if (screenOffUnlocking) {
+      perfMonitor.tick(delta)
+      lights.update(audioData)
+      sceneManager.update(delta, audioData)
+      tunnel.update(delta, tunnelOffset, audioData, audioEngine.isPlaying)
+      starfield.update(delta)
+      particles.update(delta, elapsed, audioData)
+      sceneManager.render()
+    }
   } else {
     perfMonitor.tick(delta)
     lights.update(audioData)
@@ -446,13 +455,19 @@ function setScreenOffProgress(progress) {
   screenOffProgress = Math.max(0, Math.min(1, progress))
   screenOffHandle.style.transform = 'translateY(' + (-(screenOffProgress * screenOffTravel)).toFixed(1) + 'px)'
   screenOffHandle.style.filter = 'brightness(' + (1 + screenOffProgress * 1.25).toFixed(2) + ')'
+  screenOffOverlay.style.opacity = (1 - screenOffProgress).toFixed(3)
 }
 
 function exitScreenOff() {
   if (!screenOff || screenOffUnlocking) return
   screenOffUnlocking = true
   screenOffDragging = false
+  uiShow()
+  screenOffOverlay.classList.remove('revealing')
+  screenOffOverlay.style.transition = 'opacity 0.35s ease'
+  screenOffOverlay.style.opacity = '0'
   screenOffOverlay.classList.add('unlocking')
+  screenOffToggle.classList.remove('pressed')
   screenOffHandle.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.15), filter 0.3s ease'
   setScreenOffProgress(1)
   const t = getScreenOffTarget()
@@ -464,6 +479,9 @@ function exitScreenOff() {
   setTimeout(() => {
     screenOffUnlocking = false
     screenOffOverlay.classList.remove('unlocking')
+    screenOffOverlay.classList.remove('revealing')
+    screenOffOverlay.style.opacity = ''
+    screenOffOverlay.style.transition = ''
     screenOffHandle.style.transition = ''
     screenOffHandle.style.filter = ''
     setScreenOffProgress(0)
@@ -477,6 +495,8 @@ function resetScreenOffPosition() {
   setScreenOffProgress(0)
   setTimeout(() => {
     screenOffHandle.style.transition = ''
+    screenOffOverlay.classList.remove('revealing')
+    screenOffOverlay.style.opacity = ''
   }, 400)
 }
 
@@ -485,10 +505,13 @@ screenOffToggle.addEventListener('click', () => {
   rings = []
   screenOff = true
   screenOffUnlocking = false
+  screenOffOverlay.classList.remove('revealing', 'unlocking')
+  screenOffOverlay.style.opacity = ''
+  screenOffOverlay.style.transition = ''
   screenOffHandle.style.transition = 'none'
   screenOffHandle.style.filter = ''
   setScreenOffProgress(0)
-  screenOffOverlay.classList.remove('unlocking')
+  screenOffToggle.classList.add('pressed')
   screenOffOverlay.classList.add('open')
 })
 
@@ -503,6 +526,7 @@ screenOffHandle.addEventListener('pointerdown', (e) => {
   const targetCenter = targetRect.top + targetRect.height / 2
   screenOffTravel = Math.max(50, handleCenter - targetCenter)
   screenOffHandle.style.transition = 'none'
+  screenOffOverlay.classList.add('revealing')
 })
 
 window.addEventListener('pointermove', (e) => {
