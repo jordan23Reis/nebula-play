@@ -35,6 +35,13 @@
     </svg>
   </button>
 
+  <button id="screen-off-toggle" class="screen-off-toggle" aria-label="Simular tela desligada">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 2v10"/>
+      <path d="M18.36 6.64a9 9 0 1 1-12.73 0"/>
+    </svg>
+  </button>
+
   <div id="nav-overlay" class="nav-overlay">
     <div class="nav-overlay-bg"></div>
     <div class="nav-overlay-content">
@@ -125,6 +132,18 @@
       <div id="volume-bar" class="volume-bar">
         <div id="volume-fill" class="volume-fill"></div>
       </div>
+    </div>
+  </div>
+
+  <div id="screen-off" class="screen-off">
+    <div class="screen-off-lock">
+      <div class="screen-off-track">
+        <div class="screen-off-fill" id="screen-off-fill"></div>
+        <div class="screen-off-handle" id="screen-off-handle">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg>
+        </div>
+      </div>
+      <span class="screen-off-hint">Deslize para cima para despertar</span>
     </div>
   </div>
 

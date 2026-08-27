@@ -46,6 +46,7 @@ const timeCurrent = document.getElementById('time-current')
 const timeTotal = document.getElementById('time-total')
 
 let seeking = false
+let screenOff = false
 
 // Ambient UI auto-hide (mobile): after idle, fade every visible interface element, leaving the 3D scene alone
 let uiHidden = false
@@ -89,8 +90,6 @@ function animate() {
   const delta = clock.getDelta()
   const elapsed = clock.getElapsed()
 
-  perfMonitor.tick(delta)
-
   if (audioEngine.isPlaying) {
     audioData = audioEngine.getAnalysis()
   }
@@ -115,11 +114,17 @@ function animate() {
     -10
   )
 
-  lights.update(audioData)
-  sceneManager.update(delta, audioData)
-  tunnel.update(delta, tunnelOffset, audioData, audioEngine.isPlaying)
-  starfield.update(delta)
-  particles.update(delta, elapsed, audioData)
+  if (screenOff) {
+    if (!audioEngine.isPlaying) exitScreenOff()
+  } else {
+    perfMonitor.tick(delta)
+    lights.update(audioData)
+    sceneManager.update(delta, audioData)
+    tunnel.update(delta, tunnelOffset, audioData, audioEngine.isPlaying)
+    starfield.update(delta)
+    particles.update(delta, elapsed, audioData)
+    sceneManager.render()
+  }
 
   if (audioEngine.isPlaying && !seeking) {
     const current = audioEngine.getCurrentTime()
@@ -131,8 +136,6 @@ function animate() {
       timeTotal.textContent = formatTime(duration)
     }
   }
-
-  sceneManager.render()
 }
 
 animate()
@@ -314,6 +317,90 @@ searchToggle.addEventListener('click', () => {
   }
   switchTab('search')
   searchInput.focus()
+})
+
+// Screen-off simulation
+const screenOffOverlay = document.getElementById('screen-off')
+const screenOffHandle = document.getElementById('screen-off-handle')
+const screenOffFill = document.getElementById('screen-off-fill')
+const screenOffToggle = document.getElementById('screen-off-toggle')
+
+let screenOffDragging = false
+let screenOffStartY = 0
+let screenOffTravel = 0
+let screenOffProgress = 0
+
+function setScreenOffProgress(progress) {
+  screenOffProgress = Math.max(0, Math.min(1, progress))
+  screenOffHandle.style.transform = 'translateY(' + (-(screenOffProgress * screenOffTravel)).toFixed(1) + 'px)'
+  screenOffFill.style.height = (screenOffProgress * 100).toFixed(1) + '%'
+}
+
+function resetScreenOffSlider() {
+  setScreenOffProgress(0)
+}
+
+function exitScreenOff() {
+  if (!screenOff) return
+  screenOff = false
+  screenOffOverlay.classList.remove('open')
+  screenOffHandle.style.transition = 'transform 0.45s cubic-bezier(0.4, 0, 0.2, 1)'
+  screenOffFill.style.transition = 'height 0.45s cubic-bezier(0.4, 0, 0.2, 1)'
+  resetScreenOffSlider()
+  setTimeout(() => {
+    screenOffHandle.style.transition = ''
+    screenOffFill.style.transition = ''
+  }, 500)
+}
+
+screenOffToggle.addEventListener('click', () => {
+  screenOff = true
+  screenOffOverlay.classList.add('open')
+})
+
+screenOffHandle.addEventListener('pointerdown', (e) => {
+  if (!screenOff) return
+  e.preventDefault()
+  screenOffDragging = true
+  screenOffStartY = e.clientY
+  const trackRect = screenOffOverlay.querySelector('.screen-off-track').getBoundingClientRect()
+  screenOffTravel = Math.max(50, trackRect.height - screenOffHandle.getBoundingClientRect().height - 8)
+  screenOffHandle.style.transition = 'none'
+  screenOffFill.style.transition = 'none'
+})
+
+window.addEventListener('pointermove', (e) => {
+  if (!screenOffDragging || !screenOff) return
+  const dy = e.clientY - screenOffStartY
+  setScreenOffProgress(-dy / screenOffTravel)
+})
+
+window.addEventListener('pointerup', () => {
+  if (!screenOffDragging) return
+  screenOffDragging = false
+  if (screenOffProgress >= 0.92) {
+    exitScreenOff()
+  } else {
+    screenOffHandle.style.transition = 'transform 0.35s cubic-bezier(0.4, 0, 0.2, 1)'
+    screenOffFill.style.transition = 'height 0.35s cubic-bezier(0.4, 0, 0.2, 1)'
+    resetScreenOffSlider()
+    setTimeout(() => {
+      screenOffHandle.style.transition = ''
+      screenOffFill.style.transition = ''
+    }, 400)
+  }
+})
+
+window.addEventListener('pointercancel', () => {
+  if (!screenOffDragging) return
+  screenOffDragging = false
+  screenOffHandle.style.transition = 'transform 0.35s cubic-bezier(0.4, 0, 0.2, 1)'
+  screenOffFill.style.transition = 'height 0.35s cubic-bezier(0.4, 0, 0.2, 1)'
+  resetScreenOffSlider()
+  setTimeout(() => {
+    screenOffHandle.style.transition = ''
+    screenOffFill.style.transition = ''
+  }, 400)
 })
 
 searchInput.addEventListener('input', () => {
