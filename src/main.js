@@ -150,6 +150,11 @@ navLinks.forEach(link => {
   })
 })
 
+if (audioEngine.queue.length === 0) {
+  navToggle.classList.add('active')
+  navOverlay.classList.add('open')
+}
+
 // Favorites section
 const navFavorites = document.getElementById('nav-favorites')
 
