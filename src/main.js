@@ -149,7 +149,7 @@ function animate() {
 animate()
 
 audioEngine.onTrackEnd = () => {
-  audioEngine.next()
+  audioEngine.handleTrackEnd()
 }
 
 // Progress bar
@@ -566,6 +566,10 @@ document.getElementById('btn-next').addEventListener('click', () => {
 
 document.getElementById('btn-prev').addEventListener('click', () => {
   audioEngine.prev()
+})
+
+document.getElementById('btn-repeat').addEventListener('click', () => {
+  audioEngine.cycleRepeat()
 })
 
 window.addEventListener('keydown', (e) => {

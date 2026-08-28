@@ -10,6 +10,7 @@ export class AudioEngine {
     this.onTrackEnd = null
     this.loading = false
     this.mode = 'idle'
+    this.repeat = 'off'
     this.ytPlayer = null
     this.ytReady = false
     this.ytInitStarted = false
@@ -27,6 +28,11 @@ export class AudioEngine {
         this.ytPlayer.playVideo()
       }
     })
+
+    try {
+      this.repeat = localStorage.getItem('nebula-repeat') || 'off'
+    } catch (e) {}
+    this.updateRepeatUI()
   }
 
   initYouTube() {
@@ -275,6 +281,45 @@ export class AudioEngine {
     }
     this.currentTrack = this.findPlayableIndex((this.currentTrack + 1) % this.queue.length, 1)
     this.playTrack(this.queue[this.currentTrack])
+  }
+
+  handleTrackEnd() {
+    if (this.repeat === 'one') {
+      this.restartCurrent()
+    } else if (this.repeat === 'all' || this.currentTrack < this.queue.length - 1) {
+      this.next()
+    }
+  }
+
+  restartCurrent() {
+    const track = this.getCurrentTrack()
+    if (!track) return
+    if (this.mode === 'youtube' && this.ytPlayer && typeof this.ytPlayer.seekTo === 'function') {
+      this.ytPlayer.seekTo(0, true)
+      this.ytPlayer.playVideo()
+    } else if (this.mode === 'deezer' && this.audio) {
+      this.audio.currentTime = 0
+      this.audio.play()
+    }
+    this.isPlaying = true
+    this.wasPlaying = true
+    this.updatePlayerUI()
+  }
+
+  cycleRepeat() {
+    this.repeat = this.repeat === 'off' ? 'all' : this.repeat === 'all' ? 'one' : 'off'
+    try { localStorage.setItem('nebula-repeat', this.repeat) } catch (e) {}
+    this.updateRepeatUI()
+    return this.repeat
+  }
+
+  updateRepeatUI() {
+    const btn = document.getElementById('btn-repeat')
+    if (!btn) return
+    btn.classList.toggle('repeat-active', this.repeat !== 'off')
+    btn.classList.toggle('repeat-one', this.repeat === 'one')
+    btn.setAttribute('aria-pressed', this.repeat !== 'off' ? 'true' : 'false')
+    btn.setAttribute('aria-label', this.repeat === 'one' ? 'Repetir atual' : this.repeat === 'all' ? 'Repetir fila' : 'Repetir desativado')
   }
 
   prev() {
