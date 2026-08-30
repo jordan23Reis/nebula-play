@@ -58,6 +58,35 @@ body.ui-fullscreen #ui-fullscreen-btn {
   border-color: rgba(255, 34, 34, 0.7);
 }
 
+.ui-fullscreen-hint {
+  position: fixed;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 26px);
+  transform: translateX(-50%) translateY(12px);
+  z-index: 220;
+  max-width: 86vw;
+  padding: 10px 18px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.35;
+  text-align: center;
+  color: var(--text);
+  background: rgba(10, 10, 14, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.ui-fullscreen-hint.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
 .nav-toggle:hover {
   background: rgba(20, 20, 28, 0.7);
   border-color: rgba(255, 34, 34, 0.3);
