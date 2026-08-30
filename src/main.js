@@ -377,6 +377,12 @@ function screenOffInitAnchors() {
   screenOffBtnBase = br.bottom
 }
 
+function screenOffRefreshTrail() {
+  const tr = screenOffTrail.getBoundingClientRect()
+  screenOffTrailTop = tr.top
+  screenOffTrailLen = Math.max(1, tr.bottom - tr.top)
+}
+
 function enterFullscreen() {
   const el = document.documentElement
   const req = el.requestFullscreen || el.webkitRequestFullscreen
@@ -400,13 +406,15 @@ function exitFullscreen() {
 document.addEventListener('fullscreenchange', () => {
   const active = !!(document.fullscreenElement || document.webkitFullscreenElement)
   if (active && screenOff) {
-    screenOffInitAnchors()
+    screenOffRefreshTrail()
     if (screenOffDescending) {
+      screenOffDescending = false
       setScreenOffTweens(false)
       setScreenOffState(0)
       void screenOffButton.offsetWidth
       setScreenOffTweens(true)
       setScreenOffState(1)
+      setTimeout(() => { screenOffDescending = false }, 1000)
     } else {
       const br = screenOffButton.getBoundingClientRect()
       const p = Math.max(0, Math.min(1, (br.bottom - screenOffTrailTop) / screenOffTrailLen))
