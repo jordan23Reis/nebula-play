@@ -52,17 +52,7 @@ let screenOff = false
 let uiHidden = false
 let uiHideTimer = null
 let uiLastTap = 0
-let uiFullscreenHintTimer = null
 const uiAutoHideMedia = window.matchMedia('(max-width: 768px)')
-const uiFullscreenHintEl = document.getElementById('ui-fullscreen-hint')
-
-function showUiFullscreenHint() {
-  uiFullscreenHintEl.classList.add('show')
-  clearTimeout(uiFullscreenHintTimer)
-  uiFullscreenHintTimer = setTimeout(() => {
-    uiFullscreenHintEl.classList.remove('show')
-  }, 4500)
-}
 
 function uiScheduleHide() {
   clearTimeout(uiHideTimer)
@@ -80,8 +70,6 @@ function uiShow() {
   uiHidden = false
   document.body.classList.remove('ui-hidden')
   document.body.classList.remove('ui-fullscreen')
-  uiFullscreenHintEl.classList.remove('show')
-  clearTimeout(uiFullscreenHintTimer)
   exitFullscreen()
   uiScheduleHide()
 }
@@ -110,7 +98,6 @@ document.addEventListener('pointerup', () => {
 document.getElementById('ui-fullscreen-btn').addEventListener('click', () => {
   enterFullscreen()
   document.body.classList.add('ui-fullscreen')
-  showUiFullscreenHint()
 })
 
 function formatTime(sec) {
