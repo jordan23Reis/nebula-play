@@ -286,7 +286,7 @@ export class AudioEngine {
   handleTrackEnd() {
     if (this.repeat === 'one') {
       this.restartCurrent()
-    } else if (this.repeat === 'all' || this.currentTrack < this.queue.length - 1) {
+    } else {
       this.next()
     }
   }
@@ -307,7 +307,7 @@ export class AudioEngine {
   }
 
   cycleRepeat() {
-    this.repeat = this.repeat === 'off' ? 'all' : this.repeat === 'all' ? 'one' : 'off'
+    this.repeat = this.repeat === 'one' ? 'all' : 'one'
     try { localStorage.setItem('nebula-repeat', this.repeat) } catch (e) {}
     this.updateRepeatUI()
     return this.repeat
@@ -316,10 +316,11 @@ export class AudioEngine {
   updateRepeatUI() {
     const btn = document.getElementById('btn-repeat')
     if (!btn) return
-    btn.classList.toggle('repeat-active', this.repeat !== 'off')
-    btn.classList.toggle('repeat-one', this.repeat === 'one')
-    btn.setAttribute('aria-pressed', this.repeat !== 'off' ? 'true' : 'false')
-    btn.setAttribute('aria-label', this.repeat === 'one' ? 'Repetir atual' : this.repeat === 'all' ? 'Repetir fila' : 'Repetir desativado')
+    const on = this.repeat === 'one'
+    btn.classList.remove('repeat-one')
+    btn.classList.toggle('repeat-active', on)
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false')
+    btn.setAttribute('aria-label', on ? 'Repetir música atual' : 'Repetir desativado')
   }
 
   prev() {

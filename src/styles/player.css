@@ -128,19 +128,6 @@
   margin-left: 6px;
 }
 
-#btn-repeat .repeat-one-num {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 1;
-  color: #fff;
-  opacity: 0;
-  pointer-events: none;
-}
-
 #btn-repeat.repeat-active {
   color: var(--accent);
 }
@@ -151,15 +138,6 @@
 
 #btn-repeat.repeat-active svg {
   filter: drop-shadow(0 0 6px rgba(255, 34, 34, 0.55));
-}
-
-#btn-repeat.repeat-one .repeat-icon {
-  opacity: 0.22;
-}
-
-#btn-repeat.repeat-one .repeat-one-num {
-  opacity: 1;
-  text-shadow: 0 0 8px rgba(255, 34, 34, 0.6);
 }
 
 .player-progress {
@@ -536,10 +514,33 @@
   }
 
   .player-controls {
+    position: relative;
     order: 3;
     flex: none;
     gap: 26px;
     margin-top: 22px;
+    display: grid;
+    grid-template-columns: auto auto auto;
+    justify-content: center;
+  }
+
+  #btn-repeat {
+    position: absolute;
+    left: 50%;
+    top: calc(100% + 8px);
+    transform: translateX(-50%);
+    width: 32px;
+    height: 32px;
+    margin-left: 0;
+    opacity: 0.55;
+  }
+
+  #btn-repeat:hover {
+    opacity: 0.9;
+  }
+
+  #btn-repeat.repeat-active {
+    opacity: 1;
   }
 
   .ctrl-btn {
