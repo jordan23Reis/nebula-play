@@ -51,6 +51,7 @@ let screenOff = false
 // Ambient UI auto-hide (mobile): after idle, fade every visible interface element, leaving the 3D scene alone
 let uiHidden = false
 let uiHideTimer = null
+let uiLastTap = 0
 const uiAutoHideMedia = window.matchMedia('(max-width: 768px)')
 
 function uiScheduleHide() {
@@ -60,6 +61,7 @@ function uiScheduleHide() {
     if (uiAutoHideMedia.matches && !screenOff) {
       uiHidden = true
       document.body.classList.add('ui-hidden')
+      enterFullscreen()
     }
   }, 20000)
 }
@@ -68,14 +70,29 @@ function uiShow() {
   if (!uiHidden) return
   uiHidden = false
   document.body.classList.remove('ui-hidden')
+  exitFullscreen()
   uiScheduleHide()
 }
 
 ;['pointerdown', 'pointerup', 'keydown'].forEach(evt => {
   document.addEventListener(evt, () => {
-    if (uiHidden) uiShow()
-    else uiScheduleHide()
+    if (uiHidden) {
+      if (evt === 'keydown') uiShow()
+      return
+    }
+    uiScheduleHide()
   }, { passive: true })
+})
+
+document.addEventListener('pointerup', () => {
+  if (!uiHidden) return
+  const now = Date.now()
+  if (now - uiLastTap < 350) {
+    uiLastTap = 0
+    uiShow()
+  } else {
+    uiLastTap = now
+  }
 })
 
 function formatTime(sec) {
