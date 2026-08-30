@@ -376,11 +376,47 @@ function screenOffInitAnchors() {
   screenOffBtnBase = br.bottom
 }
 
+function enterFullscreen() {
+  const el = document.documentElement
+  const req = el.requestFullscreen || el.webkitRequestFullscreen
+  if (!req) return
+  try {
+    const p = req.call(el)
+    if (p && p.catch) p.catch(() => {})
+  } catch (e) {}
+}
+
+function exitFullscreen() {
+  if (!(document.fullscreenElement || document.webkitFullscreenElement)) return
+  const ext = document.exitFullscreen || document.webkitExitFullscreen
+  if (!ext) return
+  try {
+    const p = ext.call(document)
+    if (p && p.catch) p.catch(() => {})
+  } catch (e) {}
+}
+
+document.addEventListener('fullscreenchange', () => {
+  const active = !!(document.fullscreenElement || document.webkitFullscreenElement)
+  if (active && screenOff) {
+    screenOffInitAnchors()
+    const br = screenOffButton.getBoundingClientRect()
+    const p = screenOffCenterToProgress(br.top + br.height / 2)
+    setScreenOffTweens(false)
+    setScreenOffState(p)
+    setScreenOffTweens(true)
+  }
+  if (!active && screenOff && !screenOffUnlocking) {
+    finishScreenOff()
+  }
+})
+
 function startScreenOff() {
   if (screenOff || screenOffUnlocking) return
   screenOffToggle.style.display = 'none'
   screenOffButton.style.display = 'flex'
   uiShow()
+  enterFullscreen()
   screenOff = true
   screenOffUnlocking = false
   document.body.classList.add('screen-off')
@@ -412,6 +448,7 @@ function finishScreenOff() {
     screenOffOverlay.classList.remove('open')
     screenOffButton.style.display = 'none'
     screenOffToggle.style.display = ''
+    exitFullscreen()
   }, 460)
   setTimeout(() => {
     screenOffUnlocking = false
