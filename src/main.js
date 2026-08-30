@@ -345,6 +345,7 @@ let screenOffTrailTop = 0
 let screenOffTrailLen = 1
 let screenOffProgress = 1
 let screenOffUnlocking = false
+let screenOffDescending = false
 
 const SCREEN_OFF_TWEEN = 'transform 0.95s cubic-bezier(0.33, 1, 0.68, 1)'
 const SCREEN_OFF_BG_TWEEN = 'opacity 1.05s ease'
@@ -400,11 +401,19 @@ document.addEventListener('fullscreenchange', () => {
   const active = !!(document.fullscreenElement || document.webkitFullscreenElement)
   if (active && screenOff) {
     screenOffInitAnchors()
-    const br = screenOffButton.getBoundingClientRect()
-    const p = screenOffCenterToProgress(br.top + br.height / 2)
-    setScreenOffTweens(false)
-    setScreenOffState(p)
-    setScreenOffTweens(true)
+    if (screenOffDescending) {
+      setScreenOffTweens(false)
+      setScreenOffState(0)
+      void screenOffButton.offsetWidth
+      setScreenOffTweens(true)
+      setScreenOffState(1)
+    } else {
+      const br = screenOffButton.getBoundingClientRect()
+      const p = Math.max(0, Math.min(1, (br.bottom - screenOffTrailTop) / screenOffTrailLen))
+      setScreenOffTweens(false)
+      setScreenOffState(p)
+      setScreenOffTweens(true)
+    }
   }
   if (!active && screenOff && !screenOffUnlocking) {
     finishScreenOff()
@@ -425,11 +434,13 @@ function startScreenOff() {
   screenOffButton.style.opacity = '1'
   screenOffInitAnchors()
 
+  screenOffDescending = true
   setScreenOffTweens(false)
   setScreenOffState(0)
   void screenOffButton.offsetWidth
   setScreenOffTweens(true)
   setScreenOffState(1)
+  setTimeout(() => { screenOffDescending = false }, 1000)
 }
 
 function finishScreenOff() {
@@ -486,6 +497,7 @@ screenOffButton.addEventListener('pointerdown', (e) => {
   screenOffTrailLen = Math.max(1, tr.bottom - tr.top)
   screenOffGrabbedY = e.clientY
   screenOffGrabProgress = Math.max(0, Math.min(1, (br.bottom - screenOffTrailTop) / screenOffTrailLen))
+  screenOffDescending = false
   screenOffDragging = true
   screenOffOverlay.classList.add('screen-off-dragging')
   setScreenOffTweens(false)
