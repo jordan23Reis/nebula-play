@@ -61,7 +61,6 @@ function uiScheduleHide() {
     if (uiAutoHideMedia.matches && !screenOff) {
       uiHidden = true
       document.body.classList.add('ui-hidden')
-      enterFullscreen()
     }
   }, 20000)
 }
@@ -70,6 +69,7 @@ function uiShow() {
   if (!uiHidden) return
   uiHidden = false
   document.body.classList.remove('ui-hidden')
+  document.body.classList.remove('ui-fullscreen')
   exitFullscreen()
   uiScheduleHide()
 }
@@ -93,6 +93,11 @@ document.addEventListener('pointerup', () => {
   } else {
     uiLastTap = now
   }
+})
+
+document.getElementById('ui-fullscreen-btn').addEventListener('click', () => {
+  enterFullscreen()
+  document.body.classList.add('ui-fullscreen')
 })
 
 function formatTime(sec) {
