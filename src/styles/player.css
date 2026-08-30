@@ -525,8 +525,8 @@
 
   #btn-repeat {
     position: absolute;
-    right: 22px;
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 84px);
+    right: 27px;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 74px);
     width: 36px;
     height: 36px;
     margin: 0;
