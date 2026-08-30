@@ -514,7 +514,6 @@
   }
 
   .player-controls {
-    position: relative;
     order: 3;
     flex: none;
     gap: 26px;
@@ -526,12 +525,11 @@
 
   #btn-repeat {
     position: absolute;
-    left: 50%;
-    top: calc(100% + 8px);
-    transform: translateX(-50%);
-    width: 32px;
-    height: 32px;
-    margin-left: 0;
+    right: 22px;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 84px);
+    width: 36px;
+    height: 36px;
+    margin: 0;
     opacity: 0.55;
   }
 
